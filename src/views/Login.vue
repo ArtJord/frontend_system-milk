@@ -22,16 +22,29 @@ async function handleLogin (e) {
   token.value = ''
   carregando.value = true
   try {
-    const r = await http.post('/login', { email: email.value.trim(), senha: senha.value })
-    token.value = r.data?.token || r.data?.jwt || ''
-    if (!token.value) throw new Error('Login não retornou token')
+    
+   const r = await http.post('/login', { email: email.value.trim(), senha: senha.value })
+const tokenJwt = r.data?.token || r.data?.jwt || ''
+if (!tokenJwt) throw new Error('Login não retornou token')
 
-    localStorage.setItem('auth_token', token.value)
-    setToken(token.value)
+let cargo = (r.data?.user?.cargo || r.data?.cargo || '').toLowerCase()
 
-    // volta para a rota que tentou acessar, senão dashboard
-    const target = route.query?.r ? String(route.query.r) : '/dashboard'
-    await router.replace(target)
+if (!cargo) {
+  try {
+    const base64 = tokenJwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    const payload = JSON.parse(atob(base64))
+    cargo = String(payload.role || payload.cargo || 'usuario').toLowerCase()
+  } catch {}
+}
+
+localStorage.setItem('user_cargo', cargo || 'usuario')
+localStorage.setItem('auth_token', tokenJwt)
+setToken(tokenJwt)
+
+const target = route.query?.r ? String(route.query.r) : '/dashboard'
+await router.replace(target)
+
+
   } catch (e) {
     erro.value = e?.response?.data?.message || e.message || 'Erro no login'
   } finally {

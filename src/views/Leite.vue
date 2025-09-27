@@ -1,5 +1,20 @@
 <template>
   <div class="w-full">
+    <!-- Toast message -->
+    <div
+      v-if="showToast"
+      class="fixed top-5 right-5 z-60 rounded-lg px-4 py-2 text-white shadow-lg transition-all"
+      :class="{
+        'bg-green-600': toastType === 'success',
+        'bg-red-600': toastType === 'error',
+        'bg-yellow-500': toastType === 'warning'
+      }"
+      role="status"
+      aria-live="polite"
+    >
+      {{ toastMessage }}
+    </div>
+
     <!-- Toolbar: busca + criar -->
     <div class="mb-4 flex items-center justify-between gap-3">
       <div class="flex-1">
@@ -7,14 +22,13 @@
           v-model="q"
           type="text"
           placeholder="Buscar por responsável, turno ou tipo"
-          class="w-full max-w-md rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+          class="w-full max-w-md rounded-lg border border-gray-300 px-3 py-2 placeholder-gray-400 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
         />
       </div>
       <button
         class="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700"
         @click="openCreate"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5"><path d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z"/></svg>
         Novo registro de leite
       </button>
     </div>
@@ -55,7 +69,12 @@
           </div>
           <div class="flex gap-2">
             <button @click="openEdit(item)" class="rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50">Editar</button>
-            <button @click="confirmDelete(item)" class="rounded-md bg-red-600 px-3 py-1.5 text-sm text-white hover:bg-red-700">Excluir</button>
+            <button
+              v-if="canDelete"
+              @click="openConfirmDelete(item)"
+              class="rounded-md bg-red-600 px-3 py-1.5 text-sm text-white hover:bg-red-700">
+              Excluir
+            </button>
           </div>
         </div>
         <div v-if="item.observacao" class="mt-3 rounded-md bg-gray-50 p-2 text-sm text-gray-700">{{ item.observacao }}</div>
@@ -65,6 +84,46 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal central de confirmação -->
+    <div v-if="showConfirm" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div class="w-full max-w-lg rounded-2xl bg-white shadow-xl" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+        <div class="px-6 py-5">
+          <div class="flex items-start justify-between gap-4">
+            <div class="flex-1">
+              <h2 id="confirm-title" class="text-lg font-semibold text-gray-900">Confirmar exclusão</h2>
+              <p class="mt-2 text-sm text-gray-600">
+                Tem certeza que deseja excluir este registro de leite?
+              </p>
+
+              <div v-if="confirmItem" class="mt-4 rounded-md border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                <div><strong>Data:</strong> {{ fmtData(confirmItem.data_producao) }}</div>
+                <div class="mt-1"><strong>Quantidade:</strong> {{ fmtNumero(confirmItem.quantidade_litros) }} L</div>
+                <div class="mt-1"><strong>Responsável:</strong> {{ confirmItem.responsavel || '—' }}</div>
+              </div>
+            </div>
+
+            <button @click="cancelConfirm" class="ml-3 rounded-md p-2 text-gray-400 hover:bg-gray-50" aria-label="Fechar">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="mt-6 flex items-center justify-end gap-3">
+            <button @click="cancelConfirm" class="rounded-md border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50">Cancelar</button>
+            <button
+              @click="confirmDeleteConfirmed"
+              :disabled="deletingId === (confirmItem && confirmItem.id)"
+              class="rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:opacity-60"
+            >
+              Excluir
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
 
     <!-- Modal -->
     <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
@@ -187,126 +246,137 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import http from '@/lib/http'
 
+// Recupera cargo do usuário
+function getUserRole() {
+  const byStorage =
+    localStorage.getItem('user_cargo') ||
+    localStorage.getItem('user_role') ||
+    localStorage.getItem('cargo')
+  if (byStorage) return byStorage.toLowerCase()
 
-// constantes (mesmas do backend)
-const TURNOS = ['Manhã', 'Tarde', 'Noite'] // ajustado para coincidir com backend
+  const t = localStorage.getItem('auth_token')
+  if (t && t.split('.').length === 3) {
+    try {
+      const payload = JSON.parse(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+      const r = payload.role || payload.cargo
+      if (r) return String(r).toLowerCase()
+    } catch {}
+  }
+  return 'usuario'
+}
+
+// Refs e estados
+const route = useRoute()
+const userRole = ref(getUserRole())
+const canDelete = computed(() => userRole.value === 'gerente')
+
+const TURNOS = ['Manhã', 'Tarde', 'Noite']
 const TIPOS = ['Desnatado', 'Integral', 'Semi-desnatado', 'Orgânico']
 const QUALIDADES = ['A+', 'A', 'B', 'C']
 const EQUIPAMENTOS = ['Ordenha manual', 'Ordenha mecânica 1', 'Ordenha mecânica 2', 'Sala de ordenha']
 const LOCAIS = ['Tanque de resfriamento 1', 'Tanque de resfriamento 2', 'Direto no caminhão', 'Área de processamento']
 
-
-// busca / filtro
 const q = ref('')
 const filtros = ref({ inicio: '', fim: '', turno: '' })
 const lista = ref([])
 const loading = ref(false)
 
-
-// vacas para multiseleção
 const vacas = ref([])
 const loadingVacas = ref(false)
+const deletingId = ref(null)
 
-
-// modal / form
 const showModal = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
+
+const showToast = ref(false)
+const toastMessage = ref('')
+const toastType = ref('success')
+
 const currentId = ref(null)
-
-
 const form = ref({
-data_producao: '',
-quantidade_litros: null,
-responsavel: '',
-turno: '',
-tipo_leite: '',
-qualidade: '',
-temperatura: null,
-equipamento_utilizado: '',
-animais_contribuintes: [],
-local_armazenamento: '',
-observacao: ''
+  data_producao: '',
+  quantidade_litros: null,
+  responsavel: '',
+  turno: '',
+  tipo_leite: '',
+  qualidade: '',
+  temperatura: null,
+  equipamento_utilizado: '',
+  animais_contribuintes: [],
+  local_armazenamento: '',
+  observacao: ''
 })
-
-
 const errors = ref({})
 
-// helpers
-// helpers
+// Modal de confirmação
+const showConfirm = ref(false)
+const confirmItem = ref(null)
+
+// Helpers
 const fmtNumero = (n) => {
-const v = Number(n || 0)
-return v.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+  const v = Number(n || 0)
+  return v.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
 }
 const fmtData = (iso) => {
-if (!iso) return '—'
-const d = new Date(iso)
-return d.toLocaleDateString('pt-BR')
+  if (!iso) return '—'
+  const d = new Date(iso)
+  return d.toLocaleDateString('pt-BR')
 }
 
-
-// computed filtrado
-const filtered = computed(() => {
-const term = q.value.trim().toLowerCase()
-return lista.value.filter((it) => {
-const txt = `${it.responsavel || ''} ${it.turno || ''} ${it.tipo_leite || ''}`.toLowerCase()
-const passText = !term || txt.includes(term)
-
-
-// filtro turno (case-insensitive)
-const passTurno = !filtros.value.turno || (it.turno && it.turno.toLowerCase() === filtros.value.turno.toLowerCase())
-
-
-// filtro data
-const di = filtros.value.inicio ? new Date(filtros.value.inicio) : null
-const df = filtros.value.fim ? new Date(filtros.value.fim) : null
-const dt = it.data_producao ? new Date(it.data_producao) : null
-const passData = (!di || (dt && dt >= di)) && (!df || (dt && dt <= df))
-
-
-return passText && passTurno && passData
-})
-})
-
-function resetFiltros () {
-filtros.value = { inicio: '', fim: '', turno: '' }
-}
-
-
-// carregar lista
-async function loadList () {
-loading.value = true
-try {
-const { data } = await http.get('/allleite')
-const arr = Array.isArray(data) ? data : (Array.isArray(data?.leites) ? data.leites : [])
-lista.value = (arr || []).map((row) => ({
-...row,
-animais_contribuintes: normalizeContribuintes(row.animais_contribuintes)
-}))
-} catch (e) {
-alert(e?.response?.data?.message || 'Erro ao carregar registros de leite.')
-} finally {
-loading.value = false
-}
-}
-
-function normalizeContribuintes (v) {
+// Normaliza contribuintes
+function normalizeContribuintes(v) {
   if (v == null) return []
   if (Array.isArray(v)) return v
   const s = String(v).trim()
-  // Postgres literal: {1,2,3}
   if (s.startsWith('{') && s.endsWith('}')) {
     return s.slice(1, -1).split(',').map(x => x.trim()).filter(Boolean)
   }
-  // JSON / CSV
   try { const parsed = JSON.parse(s); if (Array.isArray(parsed)) return parsed } catch {}
   return s.split(',').map(x => x.trim()).filter(Boolean)
 }
 
-// carregar vacas para multiselect
-async function loadVacas () {
+// Filtro computado
+const filtered = computed(() => {
+  const term = q.value.trim().toLowerCase()
+  return lista.value.filter((it) => {
+    const txt = `${it.responsavel || ''} ${it.turno || ''} ${it.tipo_leite || ''}`.toLowerCase()
+    const passText = !term || txt.includes(term)
+    const passTurno = !filtros.value.turno || (it.turno && it.turno.toLowerCase() === filtros.value.turno.toLowerCase())
+    const di = filtros.value.inicio ? new Date(filtros.value.inicio) : null
+    const df = filtros.value.fim ? new Date(filtros.value.fim) : null
+    const dt = it.data_producao ? new Date(it.data_producao) : null
+    const passData = (!di || (dt && dt >= di)) && (!df || (dt && dt <= df))
+    return passText && passTurno && passData
+  })
+})
+
+function resetFiltros() {
+  filtros.value = { inicio: '', fim: '', turno: '' }
+}
+
+// Carrega lista de leite
+async function loadList() {
+  loading.value = true
+  try {
+    const { data } = await http.get('/allleite')
+    const arr = Array.isArray(data) ? data : (Array.isArray(data?.leites) ? data.leites : [])
+    lista.value = (arr || []).map((row) => ({
+      ...row,
+      animais_contribuintes: normalizeContribuintes(row.animais_contribuintes)
+    }))
+  } catch (e) {
+    alert(e?.response?.data?.message || 'Erro ao carregar registros de leite.')
+  } finally {
+    loading.value = false
+  }
+}
+
+// Carrega vacas
+async function loadVacas() {
   loadingVacas.value = true
   try {
     const { data } = await http.get('/vacas')
@@ -318,7 +388,8 @@ async function loadVacas () {
   }
 }
 
-function openCreate () {
+// Abrir modal criar
+function openCreate() {
   isEditing.value = false
   currentId.value = null
   form.value = {
@@ -339,7 +410,8 @@ function openCreate () {
   if (!vacas.value.length) loadVacas()
 }
 
-function openEdit (item) {
+// Abrir modal editar
+function openEdit(item) {
   isEditing.value = true
   currentId.value = item.id
   form.value = {
@@ -360,11 +432,12 @@ function openEdit (item) {
   if (!vacas.value.length) loadVacas()
 }
 
-function close () {
+function close() {
   showModal.value = false
 }
 
-function validate () {
+// Validação formulário
+function validate() {
   errors.value = {}
   let ok = true
   if (!form.value.data_producao) { errors.value.data_producao = 'Informe a data.'; ok = false }
@@ -375,63 +448,90 @@ function validate () {
   return ok
 }
 
-async function submit () {
+// Submit form
+async function submit() {
   if (!validate()) return
   saving.value = true
   try {
     const payload = { ...form.value }
-
-    // converte "" -> null nos opcionais que têm CHECK no banco
-    const toNullIfEmpty = [
-      'turno',
-      'tipo_leite',
-      'qualidade',
-      'equipamento_utilizado',
-      'local_armazenamento',
-      'observacao'
-    ]
-    toNullIfEmpty.forEach(k => {
-      if (payload[k] === '') payload[k] = null
+    ;['turno','tipo_leite','qualidade','equipamento_utilizado','local_armazenamento','observacao'].forEach(k=>{
+      if(payload[k]==='') payload[k]=null
     })
-    if (payload.temperatura === '' || payload.temperatura == null) {
-      payload.temperatura = null
-    }
-
-    
-    if (Array.isArray(payload.animais_contribuintes)) {
-      const arr = payload.animais_contribuintes
-        .map(n => Number(n))
-        .filter(n => !Number.isNaN(n))
+    if(payload.temperatura==='') payload.temperatura=null
+    if(Array.isArray(payload.animais_contribuintes)) {
+      const arr = payload.animais_contribuintes.map(n=>Number(n)).filter(n=>!Number.isNaN(n))
       payload.animais_contribuintes = arr.length ? `{${arr.join(',')}}` : null
-      
     }
-
-    if (isEditing.value) {
-      await http.put(`/leite/${currentId.value}`, { id: currentId.value, ...payload })
+    if(isEditing.value){
+      await http.put(`/leite/${currentId.value}`, {id: currentId.value, ...payload})
     } else {
       await http.post('/leite', payload)
     }
-
     await loadList()
     showModal.value = false
-  } catch (e) {
+  } catch(e) {
     console.error('Falha ao salvar:', e?.response?.status, e?.response?.data || e?.message)
     alert(e?.response?.data?.message || (isEditing.value ? 'Erro ao salvar edição.' : 'Erro ao cadastrar.'))
   } finally {
-    saving.value = false
+    saving.value=false
   }
 }
 
+// Abrir modal de confirmação
+function openConfirmDelete(item) {
+  if(userRole.value !== 'gerente'){
+    alert('Apenas usuários com cargo GERENTE podem excluir registros de leite.')
+    return
+  }
+  confirmItem.value = item
+  showConfirm.value = true
+}
 
-async function confirmDelete (item) {
-  if (!confirm(`Excluir registro de ${fmtData(item.data_producao)} (${fmtNumero(item.quantidade_litros)} L)?`)) return
-  try {
-    await http.delete(`/leite/${item.id}`)
+// Cancelar confirmação
+function cancelConfirm() {
+  confirmItem.value = null
+  showConfirm.value = false
+}
+
+// Confirmar exclusão
+async function confirmDeleteConfirmed() {
+  if(!confirmItem.value) return
+  const item = confirmItem.value
+  const idRaw = item?.id ?? item?.ID ?? item?._id
+  const id = idRaw ? Number(idRaw) : NaN
+  if(!id || Number.isNaN(id)){
+    toastMessage.value='Não foi possível identificar o ID do registro.'
+    toastType.value='error'
+    showToast.value=true
+    setTimeout(()=>showToast.value=false,4000)
+    return
+  }
+  if(deletingId.value===id) return
+  deletingId.value=id
+  try{
+    await http.delete(`/leite/${id}`, {data:{id}})
     await loadList()
-  } catch (e) {
-    alert(e?.response?.data?.message || 'Erro ao excluir.')
+    toastMessage.value='Registro excluído com sucesso.'
+    toastType.value='success'
+    showToast.value=true
+    setTimeout(()=>showToast.value=false,4000)
+  }catch(e){
+    toastMessage.value='Erro ao excluir registro.'
+    toastType.value='error'
+    showToast.value=true
+    setTimeout(()=>showToast.value=false,4000)
+  }finally{
+    deletingId.value=null
+    confirmItem.value=null
+    showConfirm.value=false
   }
 }
 
-onMounted(loadList)
+// Mounted
+onMounted(()=>{
+  loadList()
+  loadVacas()
+})
 </script>
+
+

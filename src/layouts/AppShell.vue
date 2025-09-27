@@ -61,6 +61,8 @@ const pageTitle = computed(() => route.meta?.title ?? 'System Milk')
 
 function logout () {
   localStorage.removeItem('auth_token')
+  localStorage.removeItem('user_cargo')  
   router.push('/login')
 }
+
 </script>
