@@ -6,7 +6,9 @@
     </div>
 
     <!-- Card -->
-    <div class="relative z-10 w-full max-w-md bg-white/95 backdrop-blur-sm shadow-2xl rounded-2xl">
+    <div
+      class="relative z-10 w-full max-w-md bg-white/95 backdrop-blur-sm shadow-2xl rounded-2xl"
+    >
       <div class="text-center space-y-4 px-6 pt-6">
         <div class="flex justify-center">
           <div class="p-3 bg-green-100 rounded-full">
@@ -22,7 +24,9 @@
       <form @submit.prevent="onSubmit" class="px-6 pb-6 pt-4 space-y-4">
         <!-- Nome -->
         <div class="space-y-2">
-          <label for="nome" class="text-gray-700 text-sm font-medium">Nome Completo</label>
+          <label for="nome" class="text-gray-700 text-sm font-medium"
+            >Nome Completo</label
+          >
           <input
             id="nome"
             type="text"
@@ -69,7 +73,10 @@
               @click="showPassword = !showPassword"
               aria-label="Alternar visibilidade da senha"
             >
-              <component :is="showPassword ? EyeOff : Eye" class="h-4 w-4 text-gray-400" />
+              <component
+                :is="showPassword ? EyeOff : Eye"
+                class="h-4 w-4 text-gray-400"
+              />
             </button>
           </div>
           <p v-if="errors.senha" class="text-sm text-red-600">{{ errors.senha }}</p>
@@ -77,7 +84,9 @@
 
         <!-- Confirmar senha -->
         <div class="space-y-2">
-          <label for="confirmarSenha" class="text-gray-700 text-sm font-medium">Confirmar Senha</label>
+          <label for="confirmarSenha" class="text-gray-700 text-sm font-medium"
+            >Confirmar Senha</label
+          >
           <div class="relative">
             <input
               id="confirmarSenha"
@@ -97,7 +106,9 @@
               <component :is="showConfirm ? EyeOff : Eye" class="h-4 w-4 text-gray-400" />
             </button>
           </div>
-          <p v-if="errors.confirmarSenha" class="text-sm text-red-600">{{ errors.confirmarSenha }}</p>
+          <p v-if="errors.confirmarSenha" class="text-sm text-red-600">
+            {{ errors.confirmarSenha }}
+          </p>
         </div>
 
         <!-- Cargo -->
@@ -118,7 +129,10 @@
         </div>
 
         <!-- Erro geral da API -->
-        <div v-if="apiError" class="p-3 rounded-md border border-red-300 bg-red-50 text-sm text-red-700">
+        <div
+          v-if="apiError"
+          class="p-3 rounded-md border border-red-300 bg-red-50 text-sm text-red-700"
+        >
           {{ apiError }}
         </div>
 
@@ -148,58 +162,70 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
-import { useRouter, RouterLink } from 'vue-router'
-import http from '@/lib/http'
-import { Milk, Eye, EyeOff, ArrowLeft } from 'lucide-vue-next'
+import { ref, reactive } from "vue";
+import { useRouter, RouterLink } from "vue-router";
+import http from "@/lib/http";
+import { Milk, Eye, EyeOff, ArrowLeft } from "lucide-vue-next";
 
-const router = useRouter()
+const router = useRouter();
 
 const form = reactive({
-  nome: '',
-  email: '',
-  senha: '',
-  confirmarSenha: '',
-  cargo: '',
-})
+  nome: "",
+  email: "",
+  senha: "",
+  confirmarSenha: "",
+  cargo: "",
+});
 
-const showPassword = ref(false)
-const showConfirm = ref(false)
-const loading = ref(false)
-const apiError = ref('')
-const errors = reactive({ nome: '', email: '', senha: '', confirmarSenha: '', cargo: '' })
+const showPassword = ref(false);
+const showConfirm = ref(false);
+const loading = ref(false);
+const apiError = ref("");
+const errors = reactive({
+  nome: "",
+  email: "",
+  senha: "",
+  confirmarSenha: "",
+  cargo: "",
+});
 
 function validate() {
-  errors.nome = errors.email = errors.senha = errors.confirmarSenha = errors.cargo = ''
+  errors.nome = errors.email = errors.senha = errors.confirmarSenha = errors.cargo = "";
 
   if (!form.nome || form.nome.trim().length < 2) {
-    errors.nome = 'Informe seu nome completo.'
+    errors.nome = "Informe seu nome completo.";
   }
 
-  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email);
   if (!emailOk) {
-    errors.email = 'Email inválido.'
+    errors.email = "Email inválido.";
   }
 
   if (!form.senha || form.senha.length < 6) {
-    errors.senha = 'A senha deve ter ao menos 6 caracteres.'
+    errors.senha = "A senha deve ter ao menos 6 caracteres.";
   }
 
   if (form.confirmarSenha !== form.senha) {
-    errors.confirmarSenha = 'As senhas não conferem.'
+    errors.confirmarSenha = "As senhas não conferem.";
   }
 
   if (!form.cargo) {
-    errors.cargo = 'Selecione um cargo.'
+    errors.cargo = "Selecione um cargo.";
   }
 
-  return !errors.nome && !errors.email && !errors.senha && !errors.confirmarSenha && !errors.cargo
+  return (
+    !errors.nome &&
+    !errors.email &&
+    !errors.senha &&
+    !errors.confirmarSenha &&
+    !errors.cargo
+  );
 }
 
 async function onSubmit() {
-  apiError.value = ''
-  if (!validate()) return
-  loading.value = true
+  apiError.value = "";
+  if (!validate()) return;
+  loading.value = true;
   try {
     // backend espera: nome, email, senha, cargo (telefone/endereco/etc são opcionais)
     const payload = {
@@ -207,23 +233,21 @@ async function onSubmit() {
       email: form.email,
       senha: form.senha,
       cargo: form.cargo,
-    }
+    };
 
-    const r = await http.post('/usuario', payload)
+    const r = await http.post("/usuario", payload);
 
     // Aceita 200 ou 201
     if ([200, 201].includes(r.status)) {
-      alert('Usuário criado com sucesso! Faça login para continuar.')
-      router.push('/')
+      alert("Usuário criado com sucesso! Faça login para continuar.");
+      router.push("/");
     } else {
-      apiError.value = 'Não foi possível criar o usuário. Tente novamente.'
+      apiError.value = "Não foi possível criar o usuário. Tente novamente.";
     }
   } catch (e) {
-    apiError.value = e?.response?.data?.message || 'Erro ao criar usuário.'
+    apiError.value = e?.response?.data?.message || "Erro ao criar usuário.";
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 </script>
-
-

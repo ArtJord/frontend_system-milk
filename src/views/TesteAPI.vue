@@ -1,23 +1,23 @@
 <!-- src/views/TesteAPI.vue -->
 <script setup>
-import { ref } from 'vue'
-import http from '@/lib/http'
+import { ref } from "vue";
+import http from "@/lib/http";
 
-const resposta = ref('')
-const erro = ref('')
+const resposta = ref("");
+const erro = ref("");
 
-async function chamarAPI () {
-  resposta.value = ''
-  erro.value = ''
+async function chamarAPI() {
+  resposta.value = "";
+  erro.value = "";
   try {
-    const r = await http.get('/status.php', { timeout: 8000 })
-    resposta.value = JSON.stringify(r.data, null, 2)
+    const r = await http.get("/status.php", { timeout: 8000 });
+    resposta.value = JSON.stringify(r.data, null, 2);
   } catch (e) {
-    console.error(e)
+    console.error(e);
     // mostra mensagem amigável ou payload de erro do servidor
     erro.value = e?.response?.data
       ? JSON.stringify(e.response.data)
-      : e.message || 'Falha na requisição'
+      : e.message || "Falha na requisição";
   }
 }
 </script>
@@ -27,13 +27,11 @@ async function chamarAPI () {
     <h1>Teste de conexão com o Back</h1>
     <button @click="chamarAPI">Chamar API</button>
 
-    <pre v-if="resposta" style="white-space: pre-wrap; margin-top: 16px;">
-{{ resposta }}
+    <pre v-if="resposta" style="white-space: pre-wrap; margin-top: 16px"
+      >{{ resposta }}
     </pre>
 
-    <p v-if="erro" style="color: #c00; margin-top: 16px;">
-      ❌ Erro: {{ erro }}
-    </p>
+    <p v-if="erro" style="color: #c00; margin-top: 16px">❌ Erro: {{ erro }}</p>
   </div>
 </template>
 
