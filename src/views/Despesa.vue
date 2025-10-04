@@ -46,6 +46,40 @@
         </button>
       </div>
     </div>
+
+     <!-- Filtros rápidos -->
+    <div class="mb-4 grid grid-cols-1 md:grid-cols-5 gap-3">
+      <div>
+        <label class="text-sm text-gray-700">De</label>
+        <input type="date" v-model="filtros.inicio"
+               class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"/>
+      </div>
+      <div>
+        <label class="text-sm text-gray-700">Até</label>
+        <input type="date" v-model="filtros.fim"
+               class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"/>
+      </div>
+      <div>
+        <label class="text-sm text-gray-700">Categoria</label>
+        <select v-model="filtros.categoria"
+                class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20">
+          <option value="">Todas</option>
+          <option v-for="c in CATEGORIAS" :key="c" :value="c">{{ c }}</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-sm text-gray-700">Prioridade</label>
+        <select v-model="filtros.prioridade"
+                class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20">
+          <option value="">Todas</option>
+          <option v-for="p in PRIORIDADES" :key="p" :value="p">{{ p }}</option>
+        </select>
+      </div>
+      <div class="flex items-end gap-2">
+        <button @click="loadList" class="rounded-lg bg-gray-900 text-white px-4 py-2 hover:bg-black">Aplicar</button>
+        <button @click="resetFiltros" class="rounded-lg border border-gray-300 px-4 py-2 hover:bg-gray-50">Limpar</button>
+      </div>
+    </div>
         
 
 </template>
