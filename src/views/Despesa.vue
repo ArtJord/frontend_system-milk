@@ -80,6 +80,45 @@
         <button @click="resetFiltros" class="rounded-lg border border-gray-300 px-4 py-2 hover:bg-gray-50">Limpar</button>
       </div>
     </div>
+
+     <!-- Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div v-for="item in filtered" :key="item.id" class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="text-sm text-gray-500">
+              {{ fmtData(item.data_despesa) }} • {{ item.categoria || "—" }}<span v-if="item.subcategoria"> / {{ item.subcategoria }}</span>
+            </div>
+            <div class="mt-1 text-2xl font-semibold text-gray-900">
+              R$ {{ fmtNumero(item.valor_total ?? (Number(item.quantidade||0) * Number(item.preco_unitario||0))) }}
+            </div>
+            <div class="mt-1 text-sm text-gray-700">
+              Fornecedor: <span class="font-medium">{{ item.fornecedor || "—" }}</span>
+            </div>
+            <div class="mt-1 text-xs text-gray-600">
+              NF/Despesa: {{ item.numero_despesa || item.numero_nfe || "—" }}
+            </div>
+            <div class="mt-1 text-xs text-gray-600">
+              Prioridade: {{ item.prioridade || "—" }}
+            </div>
+            <div class="mt-1 text-xs text-gray-600">
+              Venc.: {{ fmtData(item.data_vencimento) }} • Pag.: {{ fmtData(item.data_pagamento) }}
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button @click="openEdit(item)" class="rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50">Editar</button>
+            <button v-if="canDelete" @click="openConfirmDelete(item)" class="rounded-md bg-red-600 px-3 py-1.5 text-sm text-white hover:bg-red-700">Excluir</button>
+          </div>
+        </div>
+
+        <div v-if="item.descricao" class="mt-3 rounded-md bg-gray-50 p-2 text-sm text-gray-700">
+          {{ item.descricao }}
+        </div>
+        <div v-if="item.observacoes" class="mt-2 text-xs text-gray-600">
+          Observações: {{ item.observacoes }}
+        </div>
+      </div>
+    </div>
         
 
 </template>
