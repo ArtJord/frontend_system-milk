@@ -365,20 +365,6 @@
               class="ml-3 rounded-md p-2 text-gray-400 hover:bg-gray-50"
               aria-label="Fechar"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                stroke-width="1.5"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
             </button>
           </div>
 
@@ -397,22 +383,7 @@
                 (confirmItem &&
                   (confirmItem.id ?? confirmItem.id_vaca ?? confirmItem.ID ?? null))
               "
-              class="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:opacity-60"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                stroke-width="1.5"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M6 7h12M9 7v12m6-12v12M10 7V5a2 2 0 012-2h0a2 2 0 012 2v2"
-                />
-              </svg>
+              class="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:opacity-60">
               Excluir
             </button>
           </div>
