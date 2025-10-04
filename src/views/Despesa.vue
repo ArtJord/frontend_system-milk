@@ -119,6 +119,162 @@
         </div>
       </div>
     </div>
+
+      <!-- Modal de confirmação -->
+    <div v-if="showConfirm" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div class="w-full max-w-lg rounded-2xl bg-white shadow-xl">
+        <div class="px-6 py-5">
+          <div class="flex items-start justify-between gap-4">
+            <div class="flex-1">
+              <h2 class="text-lg font-semibold text-gray-900">Confirmar exclusão</h2>
+              <p class="mt-2 text-sm text-gray-600">Tem certeza que deseja excluir esta despesa?</p>
+              <div v-if="confirmItem" class="mt-4 rounded-md border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                <div><strong>Data:</strong> {{ fmtData(confirmItem.data_despesa) }}</div>
+                <div class="mt-1"><strong>Valor:</strong> R$ {{ fmtNumero(confirmItem.valor_total ?? (Number(confirmItem.quantidade||0) * Number(confirmItem.preco_unitario||0))) }}</div>
+                <div class="mt-1"><strong>Fornecedor:</strong> {{ confirmItem.fornecedor || "—" }}</div>
+              </div>
+            </div>
+            <button @click="cancelConfirm" class="ml-3 rounded-md p-2 text-gray-400 hover:bg-gray-50" aria-label="Fechar confirmação">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          <div class="mt-6 flex items-center justify-end gap-3">
+            <button @click="cancelConfirm" class="rounded-md border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50">Cancelar</button>
+            <button @click="confirmDeleteConfirmed" class="rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700">Excluir</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de cadastro/edição -->
+    <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+      <div class="w-full max-w-3xl rounded-2xl bg-white shadow-xl">
+        <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+          <h3 class="text-lg font-semibold text-gray-900">
+            {{ isEditing ? "Editar despesa" : "Nova despesa" }}
+          </h3>
+          <button @click="close" class="rounded-md p-1.5 hover:bg-gray-50" aria-label="Fechar modal">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="h-5 w-5">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="max-h-[75vh] overflow-y-auto px-5 py-4 space-y-6">
+          <!-- Dados principais -->
+          <section class="space-y-3">
+            <h4 class="text-sm font-semibold text-gray-800">Dados principais</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="text-sm text-gray-700">Data da despesa</label>
+                <input type="date" v-model="form.data_despesa"
+                       class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"/>
+              </div>
+              <div>
+                <label class="text-sm text-gray-700">Prioridade</label>
+                <select v-model="form.prioridade"
+                        class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20">
+                  <option value="">Selecione</option>
+                  <option v-for="p in PRIORIDADES" :key="p">{{ p }}</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="text-sm text-gray-700">Categoria</label>
+                <select v-model="form.categoria"
+                        class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20">
+                  <option value="">Selecione</option>
+                  <option v-for="c in CATEGORIAS" :key="c">{{ c }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-sm text-gray-700">Subcategoria</label>
+                <input type="text" v-model="form.subcategoria"
+                       class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                       placeholder="Ex.: Ração concentrada"/>
+              </div>
+
+              <div class="md:col-span-2">
+                <label class="text-sm text-gray-700">Fornecedor</label>
+                <input type="text" v-model="form.fornecedor"
+                       class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"/>
+              </div>
+
+              <div class="md:col-span-2">
+                <label class="text-sm text-gray-700">Descrição</label>
+                <input type="text" v-model="form.descricao"
+                       class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"/>
+              </div>
+
+              <div>
+                <label class="text-sm text-gray-700">Número NF/Despesa</label>
+                <input type="text" v-model="form.numero_despesa"
+                       class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"/>
+              </div>
+            </div>
+          </section>
+
+          <!-- Valores -->
+          <section class="space-y-3">
+            <h4 class="text-sm font-semibold text-gray-800">Valores</h4>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="text-sm text-gray-700">Quantidade</label>
+                <input type="number" step="0.01" v-model.number="form.quantidade"
+                       class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20" placeholder="Ex.: 2"/>
+              </div>
+              <div>
+                <label class="text-sm text-gray-700">Preço unitário</label>
+                <input type="number" step="0.01" v-model.number="form.preco_unitario"
+                       class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20" placeholder="Ex.: 50"/>
+              </div>
+              <div>
+                <label class="text-sm text-gray-700">Valor total</label>
+                <input type="text"
+                       :value="fmtNumero((form.quantidade || 0) * (form.preco_unitario || 0))"
+                       readonly
+                       class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 bg-gray-50 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                       placeholder="Calculado automaticamente"/>
+              </div>
+            </div>
+          </section>
+
+          <!-- Vencimento/Pagamento/Observações -->
+          <section class="space-y-3">
+            <h4 class="text-sm font-semibold text-gray-800">Vencimento e pagamento</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="text-sm text-gray-700">Data de vencimento</label>
+                <input type="date" v-model="form.data_vencimento"
+                       class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"/>
+              </div>
+              <div>
+                <label class="text-sm text-gray-700">Data de pagamento</label>
+                <input type="date" v-model="form.data_pagamento"
+                       class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"/>
+              </div>
+            </div>
+            <div>
+              <label class="text-sm text-gray-700">Observações</label>
+              <textarea v-model="form.observacoes" rows="2"
+                        class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                        placeholder="Observações adicionais"></textarea>
+            </div>
+          </section>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 border-t border-gray-100 px-5 py-4">
+          <button @click="close" class="rounded-lg border border-gray-300 px-4 py-2 hover:bg-gray-50">Cancelar</button>
+          <button :disabled="saving" @click="save"
+                  class="rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700 disabled:opacity-60">
+            {{ saving ? "Salvando…" : isEditing ? "Salvar alterações" : "Cadastrar" }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
         
 
 </template>
