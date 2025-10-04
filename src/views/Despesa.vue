@@ -464,12 +464,37 @@ export default {
       }
     };
 
+    // formatters
+    const fmtNumero = (v) => {
+      const n = Number(v || 0);
+      return n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+    const fmtData = (v) => (v ? new Date(v).toLocaleDateString("pt-BR") : "—");
 
-  }
+    // mount
+    onMounted(loadList);
 
-}
-
-
+    // expose
+    return {
+      
+      q, list, filtros, form, saving,
+      
+      CATEGORIAS, PRIORIDADES,
+      
+      showToast, toastMessage, toastType, showModal, isEditing,
+      showConfirm, confirmItem,
+      
+      loadList, resetFiltros, openCreate, openEdit, close,
+      confirmDeleteConfirmed, openConfirmDelete, cancelConfirm, save,
+      
+      fmtNumero, fmtData,
+    
+      canDelete,
+      
+      filtered,
+    };
+  },
+};
 
 
 </script>
