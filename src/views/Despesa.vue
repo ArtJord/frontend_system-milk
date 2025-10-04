@@ -429,6 +429,41 @@ export default {
       }
     };
 
+     // salvar
+    const save = async () => {
+      saving.value = true;
+      try {
+        // objeto plano
+        const payload = JSON.parse(JSON.stringify(form));
+        // não enviar valor_total (banco calcula)
+        delete payload.valor_total;
+
+        let res;
+        if (isEditing.value) {
+          res = await http.put(`/despesa/${payload.id}`, payload);
+          const updated = (res && (res.data?.despesa || res.data)) || payload;
+          const idx = list.value.findIndex((i) => i.id === payload.id);
+          if (idx > -1) list.value[idx] = updated;
+        } else {
+          res = await http.post("/despesa", payload);
+          const created = (res && (res.data?.despesa || res.data)) || payload;
+          list.value.push(created);
+        }
+
+        toastMessage.value = "Despesa salva com sucesso!";
+        toastType.value = "success";
+        showToast.value = true;
+        close();
+      } catch (err) {
+        toastMessage.value = "Erro ao salvar despesa (ver console).";
+        toastType.value = "error";
+        showToast.value = true;
+        console.error("Erro ao salvar despesa:", err?.response || err);
+      } finally {
+        saving.value = false;
+      }
+    };
+
 
   }
 
