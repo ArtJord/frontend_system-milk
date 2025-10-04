@@ -358,6 +358,21 @@ export default {
       loadList();
     };
 
+     // busca local
+    const filtered = computed(() => {
+      const search = q.value.trim().toLowerCase();
+      return list.value.filter((item) => {
+        if (!search) return true;
+        return (
+          item.categoria?.toLowerCase().includes(search) ||
+          item.subcategoria?.toLowerCase().includes(search) ||
+          item.fornecedor?.toLowerCase().includes(search) ||
+          item.descricao?.toLowerCase().includes(search) ||
+          (item.numero_despesa || item.numero_nfe || "").toLowerCase().includes(search)
+        );
+      });
+    });
+
   }
 
 }
