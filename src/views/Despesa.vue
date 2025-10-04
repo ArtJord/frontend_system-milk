@@ -373,6 +373,63 @@ export default {
       });
     });
 
+    const openCreate = () => {
+      isEditing.value = false;
+      showModal.value = true;
+      Object.assign(form, {
+        id: null,
+        numero_despesa: "",
+        data_despesa: "",
+        prioridade: "",
+        categoria: "",
+        subcategoria: "",
+        descricao: "",
+        fornecedor: "",
+        quantidade: 0,
+        preco_unitario: 0,
+        numero_nfe: "",
+        data_vencimento: "",
+        data_pagamento: "",
+        observacoes: "",
+      });
+    };
+
+    const openEdit = (item) => {
+      isEditing.value = true;
+      showModal.value = true;
+      Object.assign(form, item);
+    };
+
+    const close = () => { showModal.value = false; };
+
+    const openConfirmDelete = (item) => {
+      confirmItem.value = item;
+      showConfirm.value = true;
+    };
+
+    const cancelConfirm = () => {
+      confirmItem.value = null;
+      showConfirm.value = false;
+    };
+
+    const confirmDeleteConfirmed = async () => {
+      try {
+        await http.delete(`/despesa/${confirmItem.value.id}`);
+        list.value = list.value.filter((i) => i.id !== confirmItem.value.id);
+        toastMessage.value = "Despesa excluída com sucesso!";
+        toastType.value = "success";
+        showToast.value = true;
+      } catch (err) {
+        toastMessage.value = "Erro ao excluir despesa.";
+        toastType.value = "error";
+        showToast.value = true;
+        console.error("Erro ao excluir:", err?.response || err);
+      } finally {
+        cancelConfirm();
+      }
+    };
+
+
   }
 
 }
