@@ -36,7 +36,7 @@ const router = createRouter({
 
 
 
-        { path: 'despesas', component: { template: '<div>Despesas</div>' }, meta: { title: 'Despesas' } },
+        { path: 'despesas', component: () => import('@/views/Despesa.vue'), meta: { title: 'Despesas' } },
         { path: 'relatorios', component: { template: '<div>Relatórios</div>' }, meta: { title: 'Relatórios' } },
       ],
     },

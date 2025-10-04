@@ -278,3 +278,91 @@
         
 
 </template>
+<script>
+import { ref, reactive, computed, watch, onMounted } from "vue";
+import { useRoute } from "vue-router"; 
+import http from "@/lib/http";
+
+export default {
+     name: "DespesaView",
+  setup() {
+    // UI state
+    const saving = ref(false);
+    const q = ref("");
+    const showToast = ref(false);
+    const toastMessage = ref("");
+    const toastType = ref("success");
+    const showModal = ref(false);
+    const isEditing = ref(false);
+    const showConfirm = ref(false);
+    const confirmItem = ref(null);
+
+    const filtros = ref({ inicio: "", fim: "", categoria: "", prioridade: "" });
+
+    // lista
+    const list = ref([]);
+    const canDelete = true;
+
+    
+    const PRIORIDADES = ["Baixa", "Média", "Alta", "Urgente"];
+    const CATEGORIAS = [
+      "Alimentação", "Veterinario", "Manutenção", "Combustivel", "Mão de obra",
+      "Insumos", "Impostos e taxas", "Financeiro", "Outros"
+    ];
+
+    // toast auto-hide
+    watch(showToast, (v) => { if (v) setTimeout(() => (showToast.value = false), 3000); });
+
+    // form
+    const form = reactive({
+      id: null,
+      numero_despesa: "",
+      data_despesa: "",
+      prioridade: "",
+      categoria: "",
+      subcategoria: "",
+      descricao: "",
+      fornecedor: "",
+      quantidade: 0,
+      preco_unitario: 0,
+      numero_nfe: "",
+      data_vencimento: "",
+      data_pagamento: "",
+      observacoes: "",
+    });
+
+    // carregar lista
+    const loadList = async () => {
+      try {
+        const res = await http.get("/despesas", {
+          params: {
+            inicio: filtros.value.inicio || undefined,
+            fim: filtros.value.fim || undefined,
+            categoria: filtros.value.categoria || undefined,
+            prioridade: filtros.value.prioridade || undefined,
+          },
+        });
+        list.value = res.data?.despesas || res.data || [];
+      } catch (err) {
+        list.value = [];
+        toastMessage.value = "Erro ao carregar as despesas.";
+        toastType.value = "error";
+        showToast.value = true;
+        console.error("Erro ao carregar /despesas:", err?.response || err);
+      }
+    };
+
+    const resetFiltros = () => {
+      filtros.value = { inicio: "", fim: "", categoria: "", prioridade: "" };
+      q.value = "";
+      loadList();
+    };
+
+  }
+
+}
+
+
+
+
+</script>
