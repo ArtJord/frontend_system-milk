@@ -275,45 +275,45 @@
 
           <!-- Valores -->
           <section class="space-y-3">
-  <h4 class="text-sm font-semibold text-gray-800">Valores</h4>
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-    <!-- Quantidade: EDITÁVEL -->
-    <div>
-      <label class="text-sm text-gray-700">Quantidade</label>
-      <input
-        type="number"
-        step="0.01"
-        v-model.number="form.quantidade"
-        class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
-        placeholder="Ex.: 2"
-      />
-    </div>
+            <h4 class="text-sm font-semibold text-gray-800">Valores</h4>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <!-- Quantidade: EDITÁVEL -->
+              <div>
+                <label class="text-sm text-gray-700">Quantidade</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  v-model.number="form.quantidade"
+                  class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                  placeholder="Ex.: 2"
+                />
+              </div>
 
-    <!-- Preço unitário: EDITÁVEL -->
-    <div>
-      <label class="text-sm text-gray-700">Preço unitário</label>
-      <input
-        type="number"
-        step="0.01"
-        v-model.number="form.preco_unitario"
-        class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
-        placeholder="Ex.: 50"
-      />
-    </div>
+              <!-- Preço unitário: EDITÁVEL -->
+              <div>
+                <label class="text-sm text-gray-700">Preço unitário</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  v-model.number="form.preco_unitario"
+                  class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                  placeholder="Ex.: 50"
+                />
+              </div>
 
-    <!-- Valor total: AUTOMÁTICO (somente leitura) -->
-    <div>
-      <label class="text-sm text-gray-700">Valor total</label>
-      <input
-        type="text"
-        :value="fmtNumero((form.quantidade || 0) * (form.preco_unitario || 0))"
-        readonly
-        class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 bg-gray-50 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
-        placeholder="Calculado automaticamente"
-      />
-    </div>
-  </div>
-</section>
+              <!-- Valor total: AUTOMÁTICO (somente leitura) -->
+              <div>
+                <label class="text-sm text-gray-700">Valor total</label>
+                <input
+                  type="text"
+                  :value="fmtNumero((form.quantidade || 0) * (form.preco_unitario || 0))"
+                  readonly
+                  class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 bg-gray-50 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                  placeholder="Calculado automaticamente"
+                />
+              </div>
+            </div>
+          </section>
 
           <!-- Pagamento -->
           <section class="space-y-3">
@@ -504,21 +504,53 @@ export default {
             categoria: filtros.value.categoria || undefined,
           },
         });
-        list.value = res.data.lucros || [];
+
+        // aceita vários formatos de retorno
+        const payload =
+          res?.data?.lucros ??
+          res?.data?.lucro ??
+          (Array.isArray(res?.data) ? res.data : []);
+
+        let base = Array.isArray(payload) ? payload : [];
+        // fallback: se o backend ignorar filtros, aplicamos localmente
+        base = applyLocalFilters(base, filtros.value);
+
+        list.value = base;
       } catch (err) {
-        list.value = []; // limpa lista se der erro
-        showToast.value = true;
-        toastMessage.value = "Erro ao carregar os registros.";
+        list.value = [];
+        toastMessage.value =
+          err?.response?.data?.message ||
+          "Erro ao carregar os registros (veja o console).";
         toastType.value = "error";
+        showToast.value = true;
+        console.error("GET /lucros falhou:", err?.response || err);
       }
     };
+
+    function applyLocalFilters(items, f) {
+      const ini = (f.inicio || "").slice(0, 10);
+      const fim = (f.fim || "").slice(0, 10);
+      const cat = (f.categoria || "").toLowerCase();
+
+      return items.filter((it) => {
+        const d = (it.data_receita || "").slice(0, 10);
+        const c = (it.categoria || "").toLowerCase();
+
+        if (ini && d < ini) return false;
+        if (fim && d > fim) return false;
+
+        if (cat && c !== cat) return false;
+
+        return true;
+      });
+    }
 
     const resetFiltros = () => {
       filtros.value.inicio = "";
       filtros.value.fim = "";
       filtros.value.categoria = "";
       q.value = "";
-      loadList();
+      loadList(); 
     };
 
     const filtered = computed(() => {
@@ -683,6 +715,7 @@ export default {
       canDelete,
       saving,
       CATEGORIAS,
+      loadList,
     };
   },
 };
