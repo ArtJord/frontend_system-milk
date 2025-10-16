@@ -197,8 +197,7 @@
       </div>
     </div>
 
-    <!-- Modal de cadastro/edição de lucro -->
-    <div
+   <div
       v-if="showModal"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
     >
@@ -237,6 +236,7 @@
                   v-model="form.data_receita"
                   class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
                 />
+                <p v-if="errors.data_receita" class="mt-1 text-xs text-red-600">{{ errors.data_receita }}</p>
               </div>
               <div>
                 <label class="text-sm text-gray-700">Categoria</label>
@@ -419,6 +419,7 @@
   </div>
 </template>
 
+
 <script>
 import { ref, reactive, computed, watch, onMounted } from "vue";
 import { useRoute } from "vue-router"; //testar dps
@@ -427,7 +428,7 @@ import http from "@/lib/http";
 export default {
   name: "LucroView",
   setup() {
-    const saving = ref(false); // ou reactive, dependendo do uso
+    const saving = ref(false); 
     const q = ref("");
     const showToast = ref(false);
     const toastMessage = ref("");
@@ -512,7 +513,7 @@ export default {
           (Array.isArray(res?.data) ? res.data : []);
 
         let base = Array.isArray(payload) ? payload : [];
-        // fallback: se o backend ignorar filtros, aplicamos localmente
+        // fallback
         base = applyLocalFilters(base, filtros.value);
 
         list.value = base;
@@ -613,11 +614,10 @@ export default {
       try {
         await http.delete(`/lucro/${confirmItem.value.id}`);
         list.value = list.value.filter((i) => i.id !== confirmItem.value.id);
-        toastMessage.value = "Registro excluído com sucesso!";
+        toastMessage.value = (err && (err.userMessage || err.message)) || "Não foi possível concluir a operação.";
         toastType.value = "success";
         showToast.value = true;
-      } catch (err) {
-        toastMessage.value = "Erro ao excluir registro.";
+      } catch (err) { toastMessage.value = (err && (err.userMessage || err.message)) || "Não foi possível concluir a operação.";
         toastType.value = "error";
         showToast.value = true;
       } finally {
@@ -625,7 +625,7 @@ export default {
       }
     };
 
-    const save = async () => {
+   const save = async () => {
       errors.value = {};
       saving.value = true;
       try {
@@ -650,8 +650,7 @@ export default {
         toastMessage.value = "Registro salvo com sucesso!";
         toastType.value = "success";
         close();
-      } catch (err) {
-        console.error("Erro ao salvar (frontend):", err);
+      } catch (err) { console.error("Erro ao salvar (frontend):", err);
         if (err?.response) {
           console.error("Resposta do backend:", err.response.status, err.response.data);
           // tenta mostrar mensagem do backend se existir
@@ -660,7 +659,7 @@ export default {
             err.response.data?.erro ||
             "Erro ao salvar registro (backend).";
         } else {
-          toastMessage.value = "Erro ao salvar registro (ver console).";
+          toastMessage.value = (err && (err.userMessage || err.message)) || "Não foi possível concluir a operação.";
         }
         toastType.value = "error";
         showToast.value = true;

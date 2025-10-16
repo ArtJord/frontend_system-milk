@@ -26,7 +26,6 @@
         />
       </div>
       <div class="flex items-center gap-2">
-        
         <button
           class="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700"
           @click="openCreate"
@@ -64,7 +63,7 @@
           <option v-for="c in CATEGORIAS" :key="c" :value="c">{{ c }}</option>
         </select>
       </div>
-     
+
       <div class="flex items-end gap-2">
         <button
           @click="loadList"
@@ -146,7 +145,6 @@
       </div>
     </div>
 
-    <!-- Modal de confirmação -->
     <div
       v-if="showConfirm"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
@@ -256,12 +254,24 @@
             <h4 class="text-sm font-semibold text-gray-800">Dados principais</h4>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="text-sm text-gray-700">Data da despesa</label>
+                <label class="text-sm text-gray-700"
+                  >Data da despesa <span class="text-red-600">*</span></label
+                >
                 <input
                   type="date"
                   v-model="form.data_despesa"
-                  class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                  required
+                  aria-required="true"
+                  :aria-invalid="!!errors.data_despesa"
+                  class="mt-1 w-full rounded-md border px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                  :class="{
+                    'border-red-500': !!errors.data_despesa,
+                    'border-gray-300': !errors.data_despesa,
+                  }"
                 />
+                <p v-if="errors.data_despesa" class="mt-1 text-xs text-red-600">
+                  {{ errors.data_despesa }}
+                </p>
               </div>
               <div>
                 <label class="text-sm text-gray-700">Prioridade</label>
@@ -295,12 +305,25 @@
               </div>
 
               <div class="md:col-span-2">
-                <label class="text-sm text-gray-700">Fornecedor</label>
+                <label class="text-sm text-gray-700"
+                  >Fornecedor <span class="text-red-600">*</span></label
+                >
                 <input
                   type="text"
                   v-model="form.fornecedor"
-                  class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                  required
+                  aria-required="true"
+                  :aria-invalid="!!errors.fornecedor"
+                  class="mt-1 w-full rounded-md border px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                  :class="{
+                    'border-red-500': !!errors.fornecedor,
+                    'border-gray-300': !errors.fornecedor,
+                  }"
                 />
+
+                <p v-if="errors.fornecedor" class="mt-1 text-xs text-red-600">
+                  {{ errors.fornecedor }}
+                </p>
               </div>
 
               <div class="md:col-span-2">
@@ -333,9 +356,17 @@
                   type="number"
                   step="0.01"
                   v-model.number="form.quantidade"
-                  class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                  :aria-invalid="!!errors.preco"
+                  class="mt-1 w-full rounded-md border px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                  :class="{
+                    'border-red-500': !!errors.preco,
+                    'border-gray-300': !errors.preco,
+                  }"
                   placeholder="Ex.: 2"
                 />
+                <p v-if="errors.preco" class="mt-1 text-xs text-red-600">
+                  {{ errors.preco }}
+                </p>
               </div>
               <div>
                 <label class="text-sm text-gray-700">Preço unitário</label>
@@ -414,9 +445,9 @@
     </div>
   </div>
 </template>
+
 <script>
 import { ref, reactive, computed, watch, onMounted } from "vue";
-import { useRoute } from "vue-router";
 import http from "@/lib/http";
 
 export default {
@@ -432,6 +463,7 @@ export default {
     const isEditing = ref(false);
     const showConfirm = ref(false);
     const confirmItem = ref(null);
+    const errors = reactive({});
 
     const filtros = ref({ inicio: "", fim: "", categoria: "", prioridade: "" });
 
@@ -489,7 +521,9 @@ export default {
         list.value = res.data?.despesas || res.data || [];
       } catch (err) {
         list.value = [];
-        toastMessage.value = "Erro ao carregar as despesas.";
+        toastMessage.value =
+          (err && (err.userMessage || err.message)) ||
+          "Não foi possível concluir a operação.";
         toastType.value = "error";
         showToast.value = true;
         console.error("Erro ao carregar /despesas:", err?.response || err);
@@ -517,9 +551,14 @@ export default {
       });
     });
 
+    const clearErrors = () => {
+      Object.keys(errors).forEach((k) => delete errors[k]);
+    };
+
     const openCreate = () => {
       isEditing.value = false;
       showModal.value = true;
+      clearErrors();
       Object.assign(form, {
         id: null,
         numero_despesa: "",
@@ -541,6 +580,7 @@ export default {
     const openEdit = (item) => {
       isEditing.value = true;
       showModal.value = true;
+      clearErrors();
       Object.assign(form, item);
     };
 
@@ -566,7 +606,9 @@ export default {
         toastType.value = "success";
         showToast.value = true;
       } catch (err) {
-        toastMessage.value = "Erro ao excluir despesa.";
+        toastMessage.value =
+          (err && (err.userMessage || err.message)) ||
+          "Não foi possível concluir a operação.";
         toastType.value = "error";
         showToast.value = true;
         console.error("Erro ao excluir:", err?.response || err);
@@ -579,20 +621,42 @@ export default {
     const save = async () => {
       saving.value = true;
       try {
-        // objeto plano
+        // validação cliente
+        clearErrors();
+
+        if (!form.data_despesa) errors.data_despesa = "Data da despesa é obrigatória.";
+        if (!form.fornecedor?.trim()) errors.fornecedor = "Informe o fornecedor.";
+
+        const q = Number(form.quantidade || 0);
+        const pu = Number(form.preco_unitario || 0);
+        if (!(q > 0 && pu > 0)) {
+          errors.preco = "Informe quantidade e preço unitário maiores que zero.";
+        }
+
+        if (Object.keys(errors).length) {
+          toastMessage.value = "Por favor, corrija os campos destacados.";
+          toastType.value = "warning";
+          showToast.value = true;
+          return; // não envia ao backend
+        }
+
+        // sanitização
         const payload = JSON.parse(JSON.stringify(form));
-        // não enviar valor_total (banco calcula)
+        for (const k of Object.keys(payload)) {
+          if (typeof payload[k] === "string" && payload[k].trim() === "")
+            payload[k] = null;
+        }
         delete payload.valor_total;
 
         let res;
         if (isEditing.value) {
           res = await http.put(`/despesa/${payload.id}`, payload);
-          const updated = (res && (res.data?.despesa || res.data)) || payload;
+          const updated = (res?.data?.despesa || res?.data) ?? payload;
           const idx = list.value.findIndex((i) => i.id === payload.id);
           if (idx > -1) list.value[idx] = updated;
         } else {
           res = await http.post("/despesa", payload);
-          const created = (res && (res.data?.despesa || res.data)) || payload;
+          const created = (res?.data?.despesa || res?.data) ?? payload;
           list.value.push(created);
         }
 
@@ -601,10 +665,18 @@ export default {
         showToast.value = true;
         close();
       } catch (err) {
-        toastMessage.value = "Erro ao salvar despesa (ver console).";
+        const details = err.fieldDetails || err?.response?.data?.details;
+        if (details) {
+          clearErrors();
+          Object.assign(errors, details);
+        }
+
+        toastMessage.value =
+          (err && (err.userMessage || err.message)) ||
+          err?.response?.data?.message ||
+          "Não foi possível concluir a operação.";
         toastType.value = "error";
         showToast.value = true;
-        console.error("Erro ao salvar despesa:", err?.response || err);
       } finally {
         saving.value = false;
       }
@@ -625,6 +697,7 @@ export default {
 
     // expose
     return {
+      errors,
       q,
       list,
       filtros,

@@ -25,6 +25,20 @@ http.interceptors.response.use(
         await router.replace({ path: '/login', query: { r: router.currentRoute.value.fullPath } })
       }
     }
+    err.userMessage = (()=>{
+      const s = err?.response?.status;
+      const data = err?.response?.data;
+      const backendMsg = (data && (data.message || data.erro)) || "";
+      if (backendMsg) return backendMsg;
+      if (s===0) return "Não foi possível conectar ao servidor. Verifique sua internet.";
+      if (s===400) return "Verifique os dados informados e tente novamente.";
+      if (s===401) return "Sua sessão expirou. Faça login novamente.";
+      if (s===403) return "Você não tem permissão para esta ação.";
+      if (s===404) return "Recurso não encontrado.";
+      if (s===422) return "Alguns campos são inválidos. Confira e tente de novo.";
+      if (s>=500) return "Erro no servidor. Tente novamente mais tarde.";
+      return "Não foi possível concluir a operação.";
+    })();
     return Promise.reject(err)
   }
 )
