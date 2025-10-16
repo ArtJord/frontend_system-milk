@@ -19,6 +19,50 @@
       </button>
     </div>
 
+    <!-- Filtros rápidos -->
+<div class="mb-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+  <div>
+    <label class="text-sm text-gray-700">De</label>
+    <input
+      type="date"
+      v-model="filtros.inicio"
+      class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+    />
+  </div>
+  <div>
+    <label class="text-sm text-gray-700">Até</label>
+    <input
+      type="date"
+      v-model="filtros.fim"
+      class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+    />
+  </div>
+  <div>
+    <label class="text-sm text-gray-700">Categoria</label>
+    <select
+      v-model="filtros.categoria"
+      class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+    >
+      <option value="">Todas</option>
+      <option v-for="s in STATUSS" :key="s" :value="s">{{ s }}</option>
+    </select>
+  </div>
+  <div class="flex items-end gap-2">
+    <button
+      @click="load"  
+      class="rounded-lg bg-gray-900 text-white px-4 py-2 hover:bg-black"
+    >
+      Aplicar
+    </button>
+    <button
+      @click="resetFiltros"
+      class="rounded-lg border border-gray-300 px-4 py-2 hover:bg-gray-50"
+    >
+      Limpar
+    </button>
+  </div>
+</div>
+
     <!-- Estados -->
     <div v-if="loading" class="py-10 text-center text-gray-500">Carregando...</div>
     <div v-else-if="error" class="py-3 text-red-600">{{ error }}</div>
@@ -411,6 +455,13 @@ const error = ref("");
 const items = ref([]);
 const q = ref("");
 
+// Filtros 
+const filtros = ref({
+  inicio: "",   
+  fim: "",      
+  categoria: "",
+});
+
 // Enums (CHECK do PostgreSQL)
 const RACAS = [
   "Holandesa",
@@ -499,10 +550,21 @@ async function load() {
   loading.value = true;
   error.value = "";
   try {
-    const r = await http.get(LIST_ENDPOINT);
-    items.value = Array.isArray(r.data) ? r.data : r.data?.data || [];
+    
+    const r = await http.get(LIST_ENDPOINT, {
+      params: {
+        inicio: filtros.value.inicio || undefined,
+        fim: filtros.value.fim || undefined,
+        categoria: filtros.value.categoria || undefined, 
+      },
+    });
+
+    const payload = Array.isArray(r.data) ? r.data : r.data?.data || [];
+    // fallback local 
+    items.value = applyLocalFilters(payload, filtros.value);
   } catch (e) {
     error.value = e?.response?.data?.message || "Não foi possível carregar os animais.";
+    items.value = [];
   } finally {
     loading.value = false;
   }
@@ -786,6 +848,34 @@ async function confirmDeleteConfirmed() {
     try { await load() } catch (e) { console.error('Erro reload após delete', e) }
     cancelConfirm()
   }
+}
+
+
+function applyLocalFilters(list, f) {
+  const ini = (f.inicio || "").slice(0, 10);
+  const fim = (f.fim || "").slice(0, 10);
+  const cat = (f.categoria || "").toLowerCase();
+
+  return list.filter((a) => {
+    
+    const d = (a.data_nascimento || "").slice(0, 10);
+    if (ini && d && d < ini) return false;
+    if (fim && d && d > fim) return false;
+
+   
+    const s = (a.statuss || "").toLowerCase();
+    if (cat && s !== cat) return false;
+
+    return true;
+  });
+}
+
+function resetFiltros() {
+  filtros.value.inicio = "";
+  filtros.value.fim = "";
+  filtros.value.categoria = "";
+  q.value = "";
+  load();
 }
 
 onMounted(load);

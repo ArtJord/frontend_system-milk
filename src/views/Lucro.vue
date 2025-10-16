@@ -197,7 +197,7 @@
       </div>
     </div>
 
-   <div
+    <div
       v-if="showModal"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
     >
@@ -226,94 +226,151 @@
 
         <div class="max-h-[75vh] overflow-y-auto px-5 py-4 space-y-6">
           <!-- Dados principais -->
-          <section class="space-y-3">
-            <h4 class="text-sm font-semibold text-gray-800">Dados principais</h4>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="text-sm text-gray-700">Data da receita</label>
-                <input
-                  type="date"
-                  v-model="form.data_receita"
-                  class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
-                />
-                <p v-if="errors.data_receita" class="mt-1 text-xs text-red-600">{{ errors.data_receita }}</p>
-              </div>
-              <div>
-                <label class="text-sm text-gray-700">Categoria</label>
-                <select
-                  v-model="form.categoria"
-                  class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
-                >
-                  <option value="">Selecione</option>
-                  <option>Venda de leite</option>
-                  <option>Venda de animais</option>
-                  <option>Venda de derivados</option>
-                  <option>Prestação de serviço</option>
-                  <option>Subsídios</option>
-                  <option>Outros</option>
-                </select>
-              </div>
+         <!-- Dados principais -->
+<section class="space-y-3">
+  <h4 class="text-sm font-semibold text-gray-800">Dados principais</h4>
 
-              <div>
-                <label class="text-sm text-gray-700">Cliente</label>
-                <input
-                  type="text"
-                  v-model="form.cliente"
-                  class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
-                />
-              </div>
-              <div>
-                <label class="text-sm text-gray-700">Fonte da receita</label>
-                <input
-                  type="text"
-                  v-model="form.fonte_receita"
-                  class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
-                />
-              </div>
-            </div>
-          </section>
+  <!-- WRAPPER correto (grid) -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <!-- Data da receita (*) -->
+    <div>
+      <label class="text-sm text-gray-700">
+        Data da receita <span class="text-red-600">*</span>
+      </label>
+      <input
+        type="date"
+        v-model="form.data_receita"
+        required
+        aria-required="true"
+        :aria-invalid="!!errors.data_receita"
+        class="mt-1 w-full rounded-md border px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+        :class="{
+          'border-red-500': !!errors.data_receita,
+          'border-gray-300': !errors.data_receita
+        }"
+      />
+      <p v-if="errors.data_receita" class="mt-1 text-xs text-red-600">
+        {{ errors.data_receita }}
+      </p>
+    </div>
+
+    <!-- Categoria (opcional) -->
+    <div>
+      <label class="text-sm text-gray-700">Categoria</label>
+      <select
+        v-model="form.categoria"
+        class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+      >
+        <option value="">Selecione</option>
+        <option>Venda de leite</option>
+        <option>Venda de animais</option>
+        <option>Venda de derivados</option>
+        <option>Prestação de serviço</option>
+        <option>Subsídios</option>
+        <option>Outros</option>
+      </select>
+    </div>
+
+    <!-- Cliente OU Fonte (um dos dois é obrigatório) -->
+    <div>
+      <label class="text-sm text-gray-700">
+        Cliente <span class="text-red-600">*</span>
+      </label>
+      <input
+        type="text"
+        v-model="form.cliente"
+        :aria-invalid="!!errors.identificacao"
+        class="mt-1 w-full rounded-md border px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+        :class="{
+          'border-red-500': !!errors.identificacao,
+          'border-gray-300': !errors.identificacao
+        }"
+        placeholder="Ex.: Laticínio AC"
+      />
+    </div>
+
+    <div>
+      <label class="text-sm text-gray-700">
+        Fonte da receita <span class="text-red-600">*</span>
+      </label>
+      <input
+        type="text"
+        v-model="form.fonte_receita"
+        :aria-invalid="!!errors.identificacao"
+        class="mt-1 w-full rounded-md border px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+        :class="{
+          'border-red-500': !!errors.identificacao,
+          'border-gray-300': !errors.identificacao
+        }"
+        placeholder="Ex.: Contrato 123 / Parceria X"
+      />
+    </div>
+
+    <!-- Mensagem combinada (uma só, após os dois campos) -->
+    <p v-if="errors.identificacao" class="mt-1 text-xs text-red-600 md:col-span-2">
+      {{ errors.identificacao }}
+    </p>
+  </div>
+</section>
+
 
           <!-- Valores -->
           <section class="space-y-3">
-            <h4 class="text-sm font-semibold text-gray-800">Valores</h4>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <!-- Quantidade: EDITÁVEL -->
-              <div>
-                <label class="text-sm text-gray-700">Quantidade</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  v-model.number="form.quantidade"
-                  class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
-                  placeholder="Ex.: 2"
-                />
-              </div>
+  <h4 class="text-sm font-semibold text-gray-800">Valores</h4>
 
-              <!-- Preço unitário: EDITÁVEL -->
-              <div>
-                <label class="text-sm text-gray-700">Preço unitário</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  v-model.number="form.preco_unitario"
-                  class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
-                  placeholder="Ex.: 50"
-                />
-              </div>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <!-- Quantidade -->
+    <div>
+      <label class="text-sm text-gray-700">Quantidade</label>
+      <input
+        type="number"
+        step="0.01"
+        v-model.number="form.quantidade"
+        :aria-invalid="!!errors.valor"
+        class="mt-1 w-full rounded-md border px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+        :class="{
+          'border-red-500': !!errors.valor,
+          'border-gray-300': !errors.valor
+        }"
+        placeholder="Ex.: 2"
+      />
+    </div>
 
-              <!-- Valor total: AUTOMÁTICO (somente leitura) -->
-              <div>
-                <label class="text-sm text-gray-700">Valor total</label>
-                <input
-                  type="text"
-                  :value="fmtNumero((form.quantidade || 0) * (form.preco_unitario || 0))"
-                  readonly
-                  class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 bg-gray-50 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
-                  placeholder="Calculado automaticamente"
-                />
-              </div>
-            </div>
-          </section>
+    <!-- Preço unitário -->
+    <div>
+      <label class="text-sm text-gray-700">Preço unitário</label>
+      <input
+        type="number"
+        step="0.01"
+        v-model.number="form.preco_unitario"
+        :aria-invalid="!!errors.valor"
+        class="mt-1 w-full rounded-md border px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+        :class="{
+          'border-red-500': !!errors.valor,
+          'border-gray-300': !errors.valor
+        }"
+        placeholder="Ex.: 50"
+      />
+    </div>
+
+    <!-- Valor total (readonly) -->
+    <div>
+      <label class="text-sm text-gray-700">Valor total</label>
+      <input
+        type="text"
+        :value="fmtNumero((form.quantidade || 0) * (form.preco_unitario || 0))"
+        readonly
+        class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 bg-gray-50 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+        placeholder="Calculado automaticamente"
+      />
+    </div>
+  </div>
+
+  <!-- Mensagem de erro dos valores -->
+  <p v-if="errors.valor" class="mt-1 text-xs text-red-600">
+    {{ errors.valor }}
+  </p>
+</section>
 
           <!-- Pagamento -->
           <section class="space-y-3">
@@ -419,7 +476,6 @@
   </div>
 </template>
 
-
 <script>
 import { ref, reactive, computed, watch, onMounted } from "vue";
 import { useRoute } from "vue-router"; //testar dps
@@ -428,7 +484,7 @@ import http from "@/lib/http";
 export default {
   name: "LucroView",
   setup() {
-    const saving = ref(false); 
+    const saving = ref(false);
     const q = ref("");
     const showToast = ref(false);
     const toastMessage = ref("");
@@ -475,6 +531,7 @@ export default {
       manualValorTotal.value = true;
     }
     const errors = ref({});
+    const clearErrors = () => { errors.value = {}; };
 
     const filtros = ref({
       inicio: "",
@@ -551,7 +608,7 @@ export default {
       filtros.value.fim = "";
       filtros.value.categoria = "";
       q.value = "";
-      loadList(); 
+      loadList();
     };
 
     const filtered = computed(() => {
@@ -586,14 +643,14 @@ export default {
         data_pagamento: "",
         observacoes: "",
       });
-      errors.value = {};
+      clearErrors();
     };
 
     const openEdit = (item) => {
       isEditing.value = true;
       showModal.value = true;
       Object.assign(form, item); // atualiza reactive corretamente
-      errors.value = {};
+       clearErrors();
     };
 
     const close = () => {
@@ -612,60 +669,103 @@ export default {
 
     const confirmDeleteConfirmed = async () => {
       try {
-        await http.delete(`/lucro/${confirmItem.value.id}`);
-        list.value = list.value.filter((i) => i.id !== confirmItem.value.id);
-        toastMessage.value = (err && (err.userMessage || err.message)) || "Não foi possível concluir a operação.";
-        toastType.value = "success";
-        showToast.value = true;
-      } catch (err) { toastMessage.value = (err && (err.userMessage || err.message)) || "Não foi possível concluir a operação.";
-        toastType.value = "error";
-        showToast.value = true;
-      } finally {
-        cancelConfirm();
-      }
+    await http.delete(`/lucro/${confirmItem.value.id}`);
+    list.value = list.value.filter((i) => i.id !== confirmItem.value.id);
+
+    toastMessage.value = "Registro excluído com sucesso!";
+    toastType.value = "success";
+    showToast.value = true;
+  } catch (err) {
+    toastMessage.value =
+      err?.response?.data?.message ||
+      err?.userMessage ||
+      err?.message ||
+      "Não foi possível concluir a operação.";
+    toastType.value = "error";
+    showToast.value = true;
+  } finally {
+    cancelConfirm();
+  }
     };
 
-   const save = async () => {
-      errors.value = {};
+    const save = async () => {
       saving.value = true;
-      try {
-        const payload = JSON.parse(JSON.stringify(form));
+  clearErrors();
 
-        // remove valor_total (campo calculado no banco)
-        const { valor_total, ...payloadSemValor } = payload;
+  try {
+    
+    if (!form.data_receita) {
+      errors.value.data_receita = "Data da receita é obrigatória.";
+    }
 
-        let res;
-        if (isEditing.value) {
-          res = await http.put(`/lucro/${payload.id}`, payloadSemValor);
-          const updated = (res && (res.data?.lucro || res.data)) || payload;
-          const idx = list.value.findIndex((i) => i.id === payload.id);
-          if (idx > -1) list.value[idx] = updated;
-        } else {
-          res = await http.post("/lucro", payloadSemValor);
-          const created = (res && (res.data?.lucro || res.data)) || payload;
-          list.value.push(created);
-        }
+    const temIdent =
+      (form.cliente && form.cliente.trim()) ||
+      (form.fonte_receita && form.fonte_receita.trim());
+    if (!temIdent) {
+      errors.value.identificacao = "Preencha Cliente ou Fonte da receita.";
+    }
 
-        showToast.value = true;
-        toastMessage.value = "Registro salvo com sucesso!";
-        toastType.value = "success";
-        close();
-      } catch (err) { console.error("Erro ao salvar (frontend):", err);
-        if (err?.response) {
-          console.error("Resposta do backend:", err.response.status, err.response.data);
-          // tenta mostrar mensagem do backend se existir
-          toastMessage.value =
-            err.response.data?.message ||
-            err.response.data?.erro ||
-            "Erro ao salvar registro (backend).";
-        } else {
-          toastMessage.value = (err && (err.userMessage || err.message)) || "Não foi possível concluir a operação.";
-        }
-        toastType.value = "error";
-        showToast.value = true;
-      } finally {
-        saving.value = false;
+    const q = Number(form.quantidade || 0);
+    const pu = Number(form.preco_unitario || 0);
+    const vt = Number(form.valor_total || 0);
+    const total = vt > 0 ? vt : q * pu;
+    if (!(total > 0)) {
+      errors.value.valor =
+        "Informe valor total ou preencha quantidade e preço unitário maiores que zero.";
+    }
+
+    if (Object.keys(errors.value).length) {
+      toastMessage.value = "Por favor, corrija os campos destacados.";
+      toastType.value = "warning";
+      showToast.value = true;
+      return; 
+    }
+
+    
+    const payload = JSON.parse(JSON.stringify(form));
+    for (const k of Object.keys(payload)) {
+      if (typeof payload[k] === "string" && payload[k].trim() === "") {
+        payload[k] = null;
       }
+    }
+   
+    delete payload.valor_total;
+
+    
+    let res;
+    if (isEditing.value) {
+      res = await http.put(`/lucro/${payload.id}`, payload);
+      const updated = (res?.data?.lucro || res?.data) ?? payload;
+      const idx = list.value.findIndex((i) => i.id === payload.id);
+      if (idx > -1) list.value[idx] = updated;
+    } else {
+      res = await http.post("/lucro", payload);
+      const created = (res?.data?.lucro || res?.data) ?? payload;
+      list.value.push(created);
+    }
+
+    toastMessage.value = "Registro salvo com sucesso!";
+    toastType.value = "success";
+    showToast.value = true;
+    close();
+  } catch (err) {
+    
+    const details = err?.response?.data?.details;
+    if (details && typeof details === "object") {
+      clearErrors();
+      errors.value = details;
+    }
+
+    toastMessage.value =
+      err?.response?.data?.message ||
+      err?.userMessage ||
+      err?.message ||
+      "Não foi possível concluir a operação.";
+    toastType.value = "error";
+    showToast.value = true;
+  } finally {
+    saving.value = false;
+  }
     };
 
     const fmtNumero = (v) => {
@@ -681,7 +781,7 @@ export default {
       return new Date(v).toLocaleDateString("pt-BR");
     };
 
-    // garante que a lista seja carregada ao montar
+
     onMounted(() => {
       loadList();
     });
