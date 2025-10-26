@@ -116,19 +116,47 @@
               {{ fmtData(item.data_pagamento) }}
             </div>
           </div>
-          <div class="flex gap-2">
+          <div class="flex items-center gap-2">
+            <!-- Editar (lápis redondo) -->
             <button
               @click="openEdit(item)"
-              class="rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50"
+              class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-700 hover:bg-green-600 hover:text-white transition"
+              title="Editar"
             >
-              Editar
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+              </svg>
             </button>
+
+            <!-- Excluir (lixeira redonda) -->
             <button
               v-if="canDelete"
               @click="openConfirmDelete(item)"
-              class="rounded-md bg-red-600 px-3 py-1.5 text-sm text-white hover:bg-red-700"
+              class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-red-100 text-red-600 hover:bg-red-600 hover:text-white transition"
+              title="Excluir"
             >
-              Excluir
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M6 7h12M9 7V4h6v3m2 0v13a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7z"
+                />
+              </svg>
             </button>
           </div>
         </div>
@@ -469,7 +497,31 @@ export default {
 
     // lista
     const list = ref([]);
-    const canDelete = true;
+
+    function getUserRole() {
+      const byStorage =
+        localStorage.getItem("user_cargo") ||
+        localStorage.getItem("user_role") ||
+        localStorage.getItem("cargo");
+      if (byStorage) return String(byStorage).toLowerCase();
+
+      const t = localStorage.getItem("auth_token");
+      if (t && t.split?.(".").length === 3) {
+        try {
+          const payload = JSON.parse(
+            atob(t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))
+          );
+          const r = payload.role || payload.cargo;
+          if (r) return String(r).toLowerCase();
+        } catch {}
+      }
+      return "usuario";
+    }
+
+    const userRole = ref(getUserRole());
+    const canDelete = computed(() =>
+      ["gerente", "administrador"].includes(userRole.value)
+    );
 
     const PRIORIDADES = ["Baixa", "Média", "Alta", "Urgente"];
     const CATEGORIAS = [
@@ -589,6 +641,12 @@ export default {
     };
 
     const openConfirmDelete = (item) => {
+      if (!canDelete.value) {
+        toastMessage.value = "Apenas gerente/administrador podem excluir despesas.";
+        toastType.value = "warning";
+        showToast.value = true;
+        return;
+      }
       confirmItem.value = item;
       showConfirm.value = true;
     };
