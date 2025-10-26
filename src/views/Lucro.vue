@@ -103,19 +103,47 @@
               {{ item.status_pagamento || "—" }}
             </div>
           </div>
-          <div class="flex gap-2">
+          <div class="flex items-center gap-2">
+            <!-- Editar (lápis) -->
             <button
               @click="openEdit(item)"
-              class="rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50"
+              class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-700 hover:bg-green-600 hover:text-white transition"
+              title="Editar"
             >
-              Editar
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+              </svg>
             </button>
+
+            <!-- Excluir (lixeira) -->
             <button
               v-if="canDelete"
               @click="openConfirmDelete(item)"
-              class="rounded-md bg-red-600 px-3 py-1.5 text-sm text-white hover:bg-red-700"
+              class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-red-100 text-red-600 hover:bg-red-600 hover:text-white transition"
+              title="Excluir"
             >
-              Excluir
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M6 7h12M9 7V4h6v3m2 0v13a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7z"
+                />
+              </svg>
             </button>
           </div>
         </div>
@@ -226,151 +254,153 @@
 
         <div class="max-h-[75vh] overflow-y-auto px-5 py-4 space-y-6">
           <!-- Dados principais -->
-         <!-- Dados principais -->
-<section class="space-y-3">
-  <h4 class="text-sm font-semibold text-gray-800">Dados principais</h4>
+          <!-- Dados principais -->
+          <section class="space-y-3">
+            <h4 class="text-sm font-semibold text-gray-800">Dados principais</h4>
 
-  <!-- WRAPPER correto (grid) -->
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <!-- Data da receita (*) -->
-    <div>
-      <label class="text-sm text-gray-700">
-        Data da receita <span class="text-red-600">*</span>
-      </label>
-      <input
-        type="date"
-        v-model="form.data_receita"
-        required
-        aria-required="true"
-        :aria-invalid="!!errors.data_receita"
-        class="mt-1 w-full rounded-md border px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
-        :class="{
-          'border-red-500': !!errors.data_receita,
-          'border-gray-300': !errors.data_receita
-        }"
-      />
-      <p v-if="errors.data_receita" class="mt-1 text-xs text-red-600">
-        {{ errors.data_receita }}
-      </p>
-    </div>
+            <!-- WRAPPER correto (grid) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Data da receita (*) -->
+              <div>
+                <label class="text-sm text-gray-700">
+                  Data da receita <span class="text-red-600">*</span>
+                </label>
+                <input
+                  type="date"
+                  v-model="form.data_receita"
+                  required
+                  aria-required="true"
+                  :aria-invalid="!!errors.data_receita"
+                  class="mt-1 w-full rounded-md border px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                  :class="{
+                    'border-red-500': !!errors.data_receita,
+                    'border-gray-300': !errors.data_receita,
+                  }"
+                />
+                <p v-if="errors.data_receita" class="mt-1 text-xs text-red-600">
+                  {{ errors.data_receita }}
+                </p>
+              </div>
 
-    <!-- Categoria (opcional) -->
-    <div>
-      <label class="text-sm text-gray-700">Categoria</label>
-      <select
-        v-model="form.categoria"
-        class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
-      >
-        <option value="">Selecione</option>
-        <option>Venda de leite</option>
-        <option>Venda de animais</option>
-        <option>Venda de derivados</option>
-        <option>Prestação de serviço</option>
-        <option>Subsídios</option>
-        <option>Outros</option>
-      </select>
-    </div>
+              <!-- Categoria (opcional) -->
+              <div>
+                <label class="text-sm text-gray-700">Categoria</label>
+                <select
+                  v-model="form.categoria"
+                  class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                >
+                  <option value="">Selecione</option>
+                  <option>Venda de leite</option>
+                  <option>Venda de animais</option>
+                  <option>Venda de derivados</option>
+                  <option>Prestação de serviço</option>
+                  <option>Subsídios</option>
+                  <option>Outros</option>
+                </select>
+              </div>
 
-    <!-- Cliente OU Fonte (um dos dois é obrigatório) -->
-    <div>
-      <label class="text-sm text-gray-700">
-        Cliente <span class="text-red-600">*</span>
-      </label>
-      <input
-        type="text"
-        v-model="form.cliente"
-        :aria-invalid="!!errors.identificacao"
-        class="mt-1 w-full rounded-md border px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
-        :class="{
-          'border-red-500': !!errors.identificacao,
-          'border-gray-300': !errors.identificacao
-        }"
-        placeholder="Ex.: Laticínio AC"
-      />
-    </div>
+              <!-- Cliente OU Fonte (um dos dois é obrigatório) -->
+              <div>
+                <label class="text-sm text-gray-700">
+                  Cliente <span class="text-red-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  v-model="form.cliente"
+                  :aria-invalid="!!errors.identificacao"
+                  class="mt-1 w-full rounded-md border px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                  :class="{
+                    'border-red-500': !!errors.identificacao,
+                    'border-gray-300': !errors.identificacao,
+                  }"
+                  placeholder="Ex.: Laticínio AC"
+                />
+              </div>
 
-    <div>
-      <label class="text-sm text-gray-700">
-        Fonte da receita <span class="text-red-600">*</span>
-      </label>
-      <input
-        type="text"
-        v-model="form.fonte_receita"
-        :aria-invalid="!!errors.identificacao"
-        class="mt-1 w-full rounded-md border px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
-        :class="{
-          'border-red-500': !!errors.identificacao,
-          'border-gray-300': !errors.identificacao
-        }"
-        placeholder="Ex.: Contrato 123 / Parceria X"
-      />
-    </div>
+              <div>
+                <label class="text-sm text-gray-700">
+                  Fonte da receita <span class="text-red-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  v-model="form.fonte_receita"
+                  :aria-invalid="!!errors.identificacao"
+                  class="mt-1 w-full rounded-md border px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                  :class="{
+                    'border-red-500': !!errors.identificacao,
+                    'border-gray-300': !errors.identificacao,
+                  }"
+                  placeholder="Ex.: Contrato 123 / Parceria X"
+                />
+              </div>
 
-    <!-- Mensagem combinada (uma só, após os dois campos) -->
-    <p v-if="errors.identificacao" class="mt-1 text-xs text-red-600 md:col-span-2">
-      {{ errors.identificacao }}
-    </p>
-  </div>
-</section>
-
+              <!-- Mensagem combinada (uma só, após os dois campos) -->
+              <p
+                v-if="errors.identificacao"
+                class="mt-1 text-xs text-red-600 md:col-span-2"
+              >
+                {{ errors.identificacao }}
+              </p>
+            </div>
+          </section>
 
           <!-- Valores -->
           <section class="space-y-3">
-  <h4 class="text-sm font-semibold text-gray-800">Valores</h4>
+            <h4 class="text-sm font-semibold text-gray-800">Valores</h4>
 
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-    <!-- Quantidade -->
-    <div>
-      <label class="text-sm text-gray-700">Quantidade</label>
-      <input
-        type="number"
-        step="0.01"
-        v-model.number="form.quantidade"
-        :aria-invalid="!!errors.valor"
-        class="mt-1 w-full rounded-md border px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
-        :class="{
-          'border-red-500': !!errors.valor,
-          'border-gray-300': !errors.valor
-        }"
-        placeholder="Ex.: 2"
-      />
-    </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <!-- Quantidade -->
+              <div>
+                <label class="text-sm text-gray-700">Quantidade</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  v-model.number="form.quantidade"
+                  :aria-invalid="!!errors.valor"
+                  class="mt-1 w-full rounded-md border px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                  :class="{
+                    'border-red-500': !!errors.valor,
+                    'border-gray-300': !errors.valor,
+                  }"
+                  placeholder="Ex.: 2"
+                />
+              </div>
 
-    <!-- Preço unitário -->
-    <div>
-      <label class="text-sm text-gray-700">Preço unitário</label>
-      <input
-        type="number"
-        step="0.01"
-        v-model.number="form.preco_unitario"
-        :aria-invalid="!!errors.valor"
-        class="mt-1 w-full rounded-md border px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
-        :class="{
-          'border-red-500': !!errors.valor,
-          'border-gray-300': !errors.valor
-        }"
-        placeholder="Ex.: 50"
-      />
-    </div>
+              <!-- Preço unitário -->
+              <div>
+                <label class="text-sm text-gray-700">Preço unitário</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  v-model.number="form.preco_unitario"
+                  :aria-invalid="!!errors.valor"
+                  class="mt-1 w-full rounded-md border px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                  :class="{
+                    'border-red-500': !!errors.valor,
+                    'border-gray-300': !errors.valor,
+                  }"
+                  placeholder="Ex.: 50"
+                />
+              </div>
 
-    <!-- Valor total (readonly) -->
-    <div>
-      <label class="text-sm text-gray-700">Valor total</label>
-      <input
-        type="text"
-        :value="fmtNumero((form.quantidade || 0) * (form.preco_unitario || 0))"
-        readonly
-        class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 bg-gray-50 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
-        placeholder="Calculado automaticamente"
-      />
-    </div>
-  </div>
+              <!-- Valor total (readonly) -->
+              <div>
+                <label class="text-sm text-gray-700">Valor total</label>
+                <input
+                  type="text"
+                  :value="fmtNumero((form.quantidade || 0) * (form.preco_unitario || 0))"
+                  readonly
+                  class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 bg-gray-50 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                  placeholder="Calculado automaticamente"
+                />
+              </div>
+            </div>
 
-  <!-- Mensagem de erro dos valores -->
-  <p v-if="errors.valor" class="mt-1 text-xs text-red-600">
-    {{ errors.valor }}
-  </p>
-</section>
+            <!-- Mensagem de erro dos valores -->
+            <p v-if="errors.valor" class="mt-1 text-xs text-red-600">
+              {{ errors.valor }}
+            </p>
+          </section>
 
           <!-- Pagamento -->
           <section class="space-y-3">
@@ -531,7 +561,9 @@ export default {
       manualValorTotal.value = true;
     }
     const errors = ref({});
-    const clearErrors = () => { errors.value = {}; };
+    const clearErrors = () => {
+      errors.value = {};
+    };
 
     const filtros = ref({
       inicio: "",
@@ -551,7 +583,41 @@ export default {
     const list = ref([]);
     const route = useRoute();
 
-    const canDelete = true;
+    function getUserRole() {
+      const byStorage =
+        localStorage.getItem("user_cargo") ||
+        localStorage.getItem("user_role") ||
+        localStorage.getItem("cargo");
+      if (byStorage) return String(byStorage).toLowerCase();
+
+      const t = localStorage.getItem("auth_token");
+      if (t && t.split?.(".").length === 3) {
+        try {
+          const payload = JSON.parse(
+            atob(t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))
+          );
+          const r = payload.role || payload.cargo;
+          if (r) return String(r).toLowerCase();
+        } catch {}
+      }
+      return "usuario";
+    }
+
+    const userRole = ref(getUserRole());
+    const canDelete = computed(() =>
+      ["gerente", "administrador"].includes(userRole.value)
+    );
+
+   const openConfirmDelete = (item) => {
+  if (!canDelete.value) {
+    toastMessage.value = "Apenas gerente/administrador podem excluir.";
+    toastType.value = "warning";
+    showToast.value = true;
+    return;
+  }
+  confirmItem.value = item;
+  showConfirm.value = true;
+};
 
     const loadList = async () => {
       try {
@@ -650,16 +716,11 @@ export default {
       isEditing.value = true;
       showModal.value = true;
       Object.assign(form, item); // atualiza reactive corretamente
-       clearErrors();
+      clearErrors();
     };
 
     const close = () => {
       showModal.value = false;
-    };
-
-    const openConfirmDelete = (item) => {
-      confirmItem.value = item;
-      showConfirm.value = true;
     };
 
     const cancelConfirm = () => {
@@ -668,104 +729,102 @@ export default {
     };
 
     const confirmDeleteConfirmed = async () => {
-      try {
+  try {
     await http.delete(`/lucro/${confirmItem.value.id}`);
     list.value = list.value.filter((i) => i.id !== confirmItem.value.id);
-
     toastMessage.value = "Registro excluído com sucesso!";
     toastType.value = "success";
-    showToast.value = true;
   } catch (err) {
+    const status = err?.response?.status;
     toastMessage.value =
-      err?.response?.data?.message ||
-      err?.userMessage ||
-      err?.message ||
-      "Não foi possível concluir a operação.";
+      status === 403
+        ? "Permissão negada. Somente gerente/administrador podem excluir."
+        : err?.response?.data?.message ||
+          err?.userMessage ||
+          err?.message ||
+          "Não foi possível concluir a operação.";
     toastType.value = "error";
-    showToast.value = true;
   } finally {
+    showToast.value = true;
+    setTimeout(() => (showToast.value = false), 3000);
     cancelConfirm();
   }
-    };
+};
 
     const save = async () => {
       saving.value = true;
-  clearErrors();
-
-  try {
-    
-    if (!form.data_receita) {
-      errors.value.data_receita = "Data da receita é obrigatória.";
-    }
-
-    const temIdent =
-      (form.cliente && form.cliente.trim()) ||
-      (form.fonte_receita && form.fonte_receita.trim());
-    if (!temIdent) {
-      errors.value.identificacao = "Preencha Cliente ou Fonte da receita.";
-    }
-
-    const q = Number(form.quantidade || 0);
-    const pu = Number(form.preco_unitario || 0);
-    const vt = Number(form.valor_total || 0);
-    const total = vt > 0 ? vt : q * pu;
-    if (!(total > 0)) {
-      errors.value.valor =
-        "Informe valor total ou preencha quantidade e preço unitário maiores que zero.";
-    }
-
-    if (Object.keys(errors.value).length) {
-      toastMessage.value = "Por favor, corrija os campos destacados.";
-      toastType.value = "warning";
-      showToast.value = true;
-      return; 
-    }
-
-    
-    const payload = JSON.parse(JSON.stringify(form));
-    for (const k of Object.keys(payload)) {
-      if (typeof payload[k] === "string" && payload[k].trim() === "") {
-        payload[k] = null;
-      }
-    }
-   
-    delete payload.valor_total;
-
-    
-    let res;
-    if (isEditing.value) {
-      res = await http.put(`/lucro/${payload.id}`, payload);
-      const updated = (res?.data?.lucro || res?.data) ?? payload;
-      const idx = list.value.findIndex((i) => i.id === payload.id);
-      if (idx > -1) list.value[idx] = updated;
-    } else {
-      res = await http.post("/lucro", payload);
-      const created = (res?.data?.lucro || res?.data) ?? payload;
-      list.value.push(created);
-    }
-
-    toastMessage.value = "Registro salvo com sucesso!";
-    toastType.value = "success";
-    showToast.value = true;
-    close();
-  } catch (err) {
-    
-    const details = err?.response?.data?.details;
-    if (details && typeof details === "object") {
       clearErrors();
-      errors.value = details;
-    }
 
-    toastMessage.value =
-      err?.response?.data?.message ||
-      err?.userMessage ||
-      err?.message ||
-      "Não foi possível concluir a operação.";
-    toastType.value = "error";
-    showToast.value = true;
-  } finally {
-    saving.value = false;
-  }
+      try {
+        if (!form.data_receita) {
+          errors.value.data_receita = "Data da receita é obrigatória.";
+        }
+
+        const temIdent =
+          (form.cliente && form.cliente.trim()) ||
+          (form.fonte_receita && form.fonte_receita.trim());
+        if (!temIdent) {
+          errors.value.identificacao = "Preencha Cliente ou Fonte da receita.";
+        }
+
+        const q = Number(form.quantidade || 0);
+        const pu = Number(form.preco_unitario || 0);
+        const vt = Number(form.valor_total || 0);
+        const total = vt > 0 ? vt : q * pu;
+        if (!(total > 0)) {
+          errors.value.valor =
+            "Informe valor total ou preencha quantidade e preço unitário maiores que zero.";
+        }
+
+        if (Object.keys(errors.value).length) {
+          toastMessage.value = "Por favor, corrija os campos destacados.";
+          toastType.value = "warning";
+          showToast.value = true;
+          return;
+        }
+
+        const payload = JSON.parse(JSON.stringify(form));
+        for (const k of Object.keys(payload)) {
+          if (typeof payload[k] === "string" && payload[k].trim() === "") {
+            payload[k] = null;
+          }
+        }
+
+        delete payload.valor_total;
+
+        let res;
+        if (isEditing.value) {
+          res = await http.put(`/lucro/${payload.id}`, payload);
+          const updated = (res?.data?.lucro || res?.data) ?? payload;
+          const idx = list.value.findIndex((i) => i.id === payload.id);
+          if (idx > -1) list.value[idx] = updated;
+        } else {
+          res = await http.post("/lucro", payload);
+          const created = (res?.data?.lucro || res?.data) ?? payload;
+          list.value.push(created);
+        }
+
+        toastMessage.value = "Registro salvo com sucesso!";
+        toastType.value = "success";
+        showToast.value = true;
+        close();
+      } catch (err) {
+        const details = err?.response?.data?.details;
+        if (details && typeof details === "object") {
+          clearErrors();
+          errors.value = details;
+        }
+
+        toastMessage.value =
+          err?.response?.data?.message ||
+          err?.userMessage ||
+          err?.message ||
+          "Não foi possível concluir a operação.";
+        toastType.value = "error";
+        showToast.value = true;
+      } finally {
+        saving.value = false;
+      }
     };
 
     const fmtNumero = (v) => {
@@ -780,7 +839,6 @@ export default {
       if (!v) return "—";
       return new Date(v).toLocaleDateString("pt-BR");
     };
-
 
     onMounted(() => {
       loadList();
