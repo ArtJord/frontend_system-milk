@@ -33,6 +33,7 @@ const router = createRouter({
         {
           path: 'lucros', component: () => import('@/views/Lucro.vue'), meta: { title: 'Lucro' }
         },
+      
 
         {
           path: '/configuracoes',
