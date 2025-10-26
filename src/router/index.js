@@ -34,6 +34,12 @@ const router = createRouter({
           path: 'lucros', component: () => import('@/views/Lucro.vue'), meta: { title: 'Lucro' }
         },
 
+        {
+          path: '/configuracoes',
+          component: () => import('@/views/Settings.vue'),
+          meta: { title: 'Configurações' }
+        },
+
 
 
         { path: 'despesas', component: () => import('@/views/Despesa.vue'), meta: { title: 'Despesas' } },

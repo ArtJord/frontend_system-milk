@@ -11,26 +11,60 @@
       </div>
 
       <nav class="p-2 space-y-1">
-        <RouterLink to="/dashboard" class="block rounded-md px-3 py-2 hover:bg-gray-100" active-class="bg-gray-100 font-medium">
+        <RouterLink
+          to="/dashboard"
+          class="block rounded-md px-3 py-2 hover:bg-gray-100"
+          active-class="bg-gray-100 font-medium"
+        >
           Dashboard
         </RouterLink>
-        <RouterLink to="/animais" class="block rounded-md px-3 py-2 hover:bg-gray-100" active-class="bg-gray-100 font-medium">
+        <RouterLink
+          to="/animais"
+          class="block rounded-md px-3 py-2 hover:bg-gray-100"
+          active-class="bg-gray-100 font-medium"
+        >
           Animais
         </RouterLink>
-        <RouterLink to="/leite" class="block rounded-md px-3 py-2 hover:bg-gray-100" active-class="bg-gray-100 font-medium">
+        <RouterLink
+          to="/leite"
+          class="block rounded-md px-3 py-2 hover:bg-gray-100"
+          active-class="bg-gray-100 font-medium"
+        >
           Leite
         </RouterLink>
-        <RouterLink to="/lucros" class="block rounded-md px-3 py-2 hover:bg-gray-100" active-class="bg-gray-100 font-medium">
+        <RouterLink
+          to="/lucros"
+          class="block rounded-md px-3 py-2 hover:bg-gray-100"
+          active-class="bg-gray-100 font-medium"
+        >
           Lucros
         </RouterLink>
-        <RouterLink to="/despesas" class="block rounded-md px-3 py-2 hover:bg-gray-100" active-class="bg-gray-100 font-medium">
+        <RouterLink
+          to="/despesas"
+          class="block rounded-md px-3 py-2 hover:bg-gray-100"
+          active-class="bg-gray-100 font-medium"
+        >
           Despesas
         </RouterLink>
-        <RouterLink to="/relatorios" class="block rounded-md px-3 py-2 hover:bg-gray-100" active-class="bg-gray-100 font-medium">
+        <RouterLink
+          to="/relatorios"
+          class="block rounded-md px-3 py-2 hover:bg-gray-100"
+          active-class="bg-gray-100 font-medium"
+        >
           Relatórios
         </RouterLink>
+        <RouterLink
+          to="/configuracoes"
+          class="block rounded-md px-3 py-2 hover:bg-gray-100"
+          active-class="bg-gray-100 font-medium"
+        >
+          Configurações
+        </RouterLink>
 
-        <button @click="logout" class="mt-4 w-full text-left text-red-600 rounded-md px-3 py-2 hover:bg-red-50">
+        <button
+          @click="logout"
+          class="mt-4 w-full text-left text-red-600 rounded-md px-3 py-2 hover:bg-red-50"
+        >
           Sair
         </button>
       </nav>
@@ -51,18 +85,17 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { Milk } from 'lucide-vue-next'
+import { computed } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { Milk } from "lucide-vue-next";
 
-const route = useRoute()
-const router = useRouter()
-const pageTitle = computed(() => route.meta?.title ?? 'System Milk')
+const route = useRoute();
+const router = useRouter();
+const pageTitle = computed(() => route.meta?.title ?? "System Milk");
 
-function logout () {
-  localStorage.removeItem('auth_token')
-  localStorage.removeItem('user_cargo')  
-  router.push('/login')
+function logout() {
+  localStorage.removeItem("auth_token");
+  localStorage.removeItem("user_cargo");
+  router.push("/login");
 }
-
 </script>

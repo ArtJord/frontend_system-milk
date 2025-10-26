@@ -348,6 +348,8 @@ function fmtNumero(n) {
   if (n == null) return "—";
   return n.toLocaleString("pt-BR");
 }
+
+
 </script>
 
 <template>
