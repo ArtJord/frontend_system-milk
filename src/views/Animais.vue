@@ -20,48 +20,48 @@
     </div>
 
     <!-- Filtros rápidos -->
-<div class="mb-4 grid grid-cols-1 md:grid-cols-4 gap-3">
-  <div>
-    <label class="text-sm text-gray-700">De</label>
-    <input
-      type="date"
-      v-model="filtros.inicio"
-      class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
-    />
-  </div>
-  <div>
-    <label class="text-sm text-gray-700">Até</label>
-    <input
-      type="date"
-      v-model="filtros.fim"
-      class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
-    />
-  </div>
-  <div>
-    <label class="text-sm text-gray-700">Categoria</label>
-    <select
-      v-model="filtros.categoria"
-      class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
-    >
-      <option value="">Todas</option>
-      <option v-for="s in STATUSS" :key="s" :value="s">{{ s }}</option>
-    </select>
-  </div>
-  <div class="flex items-end gap-2">
-    <button
-      @click="load"  
-      class="rounded-lg bg-gray-900 text-white px-4 py-2 hover:bg-black"
-    >
-      Aplicar
-    </button>
-    <button
-      @click="resetFiltros"
-      class="rounded-lg border border-gray-300 px-4 py-2 hover:bg-gray-50"
-    >
-      Limpar
-    </button>
-  </div>
-</div>
+    <div class="mb-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div>
+        <label class="text-sm text-gray-700">De</label>
+        <input
+          type="date"
+          v-model="filtros.inicio"
+          class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+        />
+      </div>
+      <div>
+        <label class="text-sm text-gray-700">Até</label>
+        <input
+          type="date"
+          v-model="filtros.fim"
+          class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+        />
+      </div>
+      <div>
+        <label class="text-sm text-gray-700">Categoria</label>
+        <select
+          v-model="filtros.categoria"
+          class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+        >
+          <option value="">Todas</option>
+          <option v-for="s in STATUSS" :key="s" :value="s">{{ s }}</option>
+        </select>
+      </div>
+      <div class="flex items-end gap-2">
+        <button
+          @click="load"
+          class="rounded-lg bg-gray-900 text-white px-4 py-2 hover:bg-black"
+        >
+          Aplicar
+        </button>
+        <button
+          @click="resetFiltros"
+          class="rounded-lg border border-gray-300 px-4 py-2 hover:bg-gray-50"
+        >
+          Limpar
+        </button>
+      </div>
+    </div>
 
     <!-- Estados -->
     <div v-if="loading" class="py-10 text-center text-gray-500">Carregando...</div>
@@ -77,15 +77,31 @@
         :key="a.id || a.id_vaca || a.numero_animal"
         class="relative rounded-xl border border-gray-100 bg-white p-5 shadow-sm"
       >
-        <!-- Botão redondo de editar -->
-        <button
-          class="absolute top-3 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-700 hover:bg-green-600 hover:text-white transition"
-          @click="openEdit(a)"
-          :title="`Editar ${a.nome_animal || ''}`"
-        >
-          <Pencil class="h-4 w-4" />
-        </button>
+       <!-- Ações -->
+  <div class="absolute top-3 right-3 flex items-center gap-2">
+    <!-- Editar -->
+    <button
+      @click="openEdit(a)"
+      class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-700 hover:bg-green-600 hover:text-white transition"
+      :title="`Editar ${a.nome_animal || ''}`"
+    >
+      <Pencil class="h-4 w-4" />
+    </button>
 
+    <!-- Excluir -->
+    <button
+      v-if="canDelete"
+      @click="openConfirm(a)"
+      :disabled="deletingId === (a.id ?? a.id_vaca ?? a.ID ?? null)"
+      class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-red-100 text-red-600 hover:bg-red-600 hover:text-white transition disabled:opacity-60"
+      title="Excluir"
+    >
+      <!-- Ícone lixeira -->
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 7h12M9 7V4h6v3m2 0v13a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7z"/>
+      </svg>
+    </button>
+  </div>
         <div class="flex items-start justify-between mb-2">
           <div class="text-xs text-gray-500">Nº {{ a.numero_animal || "—" }}</div>
           <Milk class="h-4 w-4 text-green-600" />
@@ -117,24 +133,8 @@
           {{ a.observacoes }}
         </p>
 
-        <!-- Ações (Editar + Excluir para gerente) -->
-       <div class="absolute top-3 right-3 flex items-center gap-2">
-  <button
-    @click="openEdit(a)"
-    class="rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50"
-  >
-    Editar
-  </button>
-
-  <button
-    v-if="canDelete"
-    @click="openConfirm(a)"
-    :disabled="deletingId === (a.id ?? a.id_vaca ?? a.ID ?? null)"
-    class="rounded-md bg-red-600 px-3 py-1.5 text-sm text-white hover:bg-red-700 disabled:opacity-60"
-  >
-    Excluir
-  </button>
-</div>
+        
+        
       </div>
     </div>
 
@@ -408,8 +408,7 @@
               @click="cancelConfirm"
               class="ml-3 rounded-md p-2 text-gray-400 hover:bg-gray-50"
               aria-label="Fechar"
-            >
-            </button>
+            ></button>
           </div>
 
           <div class="mt-6 flex items-center justify-end gap-3">
@@ -427,7 +426,8 @@
                 (confirmItem &&
                   (confirmItem.id ?? confirmItem.id_vaca ?? confirmItem.ID ?? null))
               "
-              class="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:opacity-60">
+              class="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:opacity-60"
+            >
               Excluir
             </button>
           </div>
@@ -455,10 +455,10 @@ const error = ref("");
 const items = ref([]);
 const q = ref("");
 
-// Filtros 
+// Filtros
 const filtros = ref({
-  inicio: "",   
-  fim: "",      
+  inicio: "",
+  fim: "",
   categoria: "",
 });
 
@@ -550,17 +550,16 @@ async function load() {
   loading.value = true;
   error.value = "";
   try {
-    
     const r = await http.get(LIST_ENDPOINT, {
       params: {
         inicio: filtros.value.inicio || undefined,
         fim: filtros.value.fim || undefined,
-        categoria: filtros.value.categoria || undefined, 
+        categoria: filtros.value.categoria || undefined,
       },
     });
 
     const payload = Array.isArray(r.data) ? r.data : r.data?.data || [];
-    // fallback local 
+    // fallback local
     items.value = applyLocalFilters(payload, filtros.value);
   } catch (e) {
     error.value = e?.response?.data?.message || "Não foi possível carregar os animais.";
@@ -769,7 +768,7 @@ const canDelete = computed(() => userRole.value === "gerente");
 
 const showToast = ref(false);
 const toastMessage = ref("");
-const toastType = ref("success"); 
+const toastType = ref("success");
 
 function showToastMsg(msg, type = "success") {
   toastMessage.value = msg;
@@ -794,7 +793,7 @@ function cancelConfirm() {
   showConfirm.value = false;
 }
 
-const DELETE_ENDPOINT_BASE = "/vaca" 
+const DELETE_ENDPOINT_BASE = "/vaca";
 
 async function performDelete(item) {
   const idRaw = item?.id ?? item?.id_vaca ?? item?.ID;
@@ -816,27 +815,27 @@ async function performDelete(item) {
   if (deletingId.value === id) return false;
   deletingId.value = id;
 
- try {
-    
-    await http.delete(`${DELETE_ENDPOINT_BASE}/${id}`, { data: { id } })
+  try {
+    await http.delete(`${DELETE_ENDPOINT_BASE}/${id}`, { data: { id } });
 
-    showToastMsg && showToastMsg('Registro excluído com sucesso.', 'success')
-    return true
+    showToastMsg && showToastMsg("Registro excluído com sucesso.", "success");
+    return true;
   } catch (e) {
-    const status = e?.response?.status
-    const msg = e?.response?.data?.message
+    const status = e?.response?.status;
+    const msg = e?.response?.data?.message;
     if (status === 401 || status === 403) {
-      showToastMsg && showToastMsg('Permissão negada pelo servidor.', 'error')
-    } else if (status === 400 && /id.*obrigat/i.test(msg || '')) {
-      showToastMsg && showToastMsg('Backend reclamou do ID (verifique o formato).', 'error')
-      console.error('Backend message:', msg)
+      showToastMsg && showToastMsg("Permissão negada pelo servidor.", "error");
+    } else if (status === 400 && /id.*obrigat/i.test(msg || "")) {
+      showToastMsg &&
+        showToastMsg("Backend reclamou do ID (verifique o formato).", "error");
+      console.error("Backend message:", msg);
     } else {
-      showToastMsg && showToastMsg(msg || 'Erro ao excluir (veja console).', 'error')
-      console.error('Erro ao excluir:', status, msg || e?.message)
+      showToastMsg && showToastMsg(msg || "Erro ao excluir (veja console).", "error");
+      console.error("Erro ao excluir:", status, msg || e?.message);
     }
-    return false
+    return false;
   } finally {
-    deletingId.value = null
+    deletingId.value = null;
   }
 }
 
@@ -845,11 +844,14 @@ async function confirmDeleteConfirmed() {
   const ok = await performDelete(confirmItem.value);
   if (ok) {
     // recarrega lista após exclusão
-    try { await load() } catch (e) { console.error('Erro reload após delete', e) }
-    cancelConfirm()
+    try {
+      await load();
+    } catch (e) {
+      console.error("Erro reload após delete", e);
+    }
+    cancelConfirm();
   }
 }
-
 
 function applyLocalFilters(list, f) {
   const ini = (f.inicio || "").slice(0, 10);
@@ -857,12 +859,10 @@ function applyLocalFilters(list, f) {
   const cat = (f.categoria || "").toLowerCase();
 
   return list.filter((a) => {
-    
     const d = (a.data_nascimento || "").slice(0, 10);
     if (ini && d && d < ini) return false;
     if (fim && d && d > fim) return false;
 
-   
     const s = (a.statuss || "").toLowerCase();
     if (cat && s !== cat) return false;
 
