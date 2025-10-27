@@ -475,29 +475,33 @@ import http from "@/lib/http";
 
 // Recupera cargo do usuário
 function getUserRole() {
-  const byStorage =
+  const raw =
     localStorage.getItem("user_cargo") ||
     localStorage.getItem("user_role") ||
     localStorage.getItem("cargo");
-  if (byStorage) return byStorage.toLowerCase();
 
-  const t = localStorage.getItem("auth_token");
-  if (t && t.split(".").length === 3) {
-    try {
-      const payload = JSON.parse(
-        atob(t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))
-      );
-      const r = payload.role || payload.cargo;
-      if (r) return String(r).toLowerCase();
-    } catch {}
+  let role = raw;
+  if (!role) {
+    const t = localStorage.getItem("auth_token");
+    if (t && t.split?.(".").length === 3) {
+      try {
+        const payload = JSON.parse(atob(t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+        role = payload.role || payload.cargo;
+      } catch {}
+    }
   }
-  return "usuario";
+
+  const s = String(role || "").toLowerCase();
+  if (["admin", "adm"].includes(s)) return "administrador";
+  if (["manager"].includes(s)) return "gerente";
+  if (["user", "usuario", "colaborador"].includes(s)) return "funcionario";
+  return s || "usuario";
 }
 
 // Refs e estados
 const route = useRoute();
 const userRole = ref(getUserRole());
-const canDelete = computed(() => userRole.value === "gerente");
+const canDelete = computed(() => ["gerente", "administrador"].includes(userRole.value));
 
 const TURNOS = ["Manhã", "Tarde", "Noite"];
 const TIPOS = ["Desnatado", "Integral", "Semi-desnatado", "Orgânico"];
@@ -759,9 +763,9 @@ async function submit() {
 
 // Abrir modal de confirmação
 function openConfirmDelete(item) {
-  if (userRole.value !== "gerente") {
-    alert("Apenas usuários com cargo GERENTE podem excluir registros de leite.");
-    return;
+  if (!["gerente", "administrador"].includes(userRole.value)) {
+    showToastMsg("Apenas gerente/administrador podem excluir.", "warning");
+    return false;
   }
   confirmItem.value = item;
   showConfirm.value = true;

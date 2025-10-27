@@ -744,27 +744,31 @@ async function submit() {
   }
 }
 function getUserRole() {
-  const byStorage =
+  const raw =
     localStorage.getItem("user_cargo") ||
     localStorage.getItem("user_role") ||
     localStorage.getItem("cargo");
-  if (byStorage) return String(byStorage).toLowerCase();
 
-  const t = localStorage.getItem("auth_token");
-  if (t && t.split?.(".").length === 3) {
-    try {
-      const payload = JSON.parse(
-        atob(t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))
-      );
-      const r = payload.role || payload.cargo;
-      if (r) return String(r).toLowerCase();
-    } catch {}
+  let role = raw;
+  if (!role) {
+    const t = localStorage.getItem("auth_token");
+    if (t && t.split?.(".").length === 3) {
+      try {
+        const payload = JSON.parse(atob(t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+        role = payload.role || payload.cargo;
+      } catch {}
+    }
   }
-  return "usuario";
+
+  const s = String(role || "").toLowerCase();
+  if (["admin", "adm"].includes(s)) return "administrador";
+  if (["manager"].includes(s)) return "gerente";
+  if (["user", "usuario", "colaborador"].includes(s)) return "funcionario";
+  return s || "usuario";
 }
 
 const userRole = ref(getUserRole());
-const canDelete = computed(() => userRole.value === "gerente");
+const canDelete = computed(() => ["gerente", "administrador"].includes(userRole.value));
 
 const showToast = ref(false);
 const toastMessage = ref("");
@@ -807,8 +811,8 @@ async function performDelete(item) {
     return false;
   }
 
-  if (userRole.value !== "gerente") {
-    showToastMsg("Somente usuário gerente pode excluir.", "warning");
+  if (!["gerente", "administrador"].includes(userRole.value)) {
+    showToastMsg("Apenas gerente/administrador podem excluir.", "warning");
     return false;
   }
 
