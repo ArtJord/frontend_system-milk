@@ -117,7 +117,7 @@
           <dd>{{ a.sexo || "—" }}</dd>
 
           <dt class="text-gray-500">Nascimento</dt>
-          <dd>{{ formatDate(a.data_nascimento) }}</dd>
+          <dd>{{ formatDateBR(a.data_nascimento) }}</dd>
 
           <dt class="text-gray-500">Peso (kg)</dt>
           <dd>{{ a.peso_kg ?? "—" }}</dd>
@@ -441,6 +441,7 @@
 import { ref, computed, onMounted } from "vue";
 import { Plus, X, Milk, Pencil } from "lucide-vue-next";
 import http from "@/lib/http";
+import { formatDateBR } from "@/utils/date";
 
 //teste
 const REQUIRED_ON_UPDATE = ["numero_animal"];
@@ -529,17 +530,7 @@ const filtered = computed(() => {
   );
 });
 
-// Utils
-function formatDate(v) {
-  if (!v) return "—";
-  try {
-    const d = new Date(v);
-    if (Number.isNaN(d.getTime())) return v;
-    return d.toLocaleDateString("pt-BR");
-  } catch {
-    return v;
-  }
-}
+
 const changed = (key) => {
   if (!isEditing.value || !originalForm.value) return true; // em criação, considere "mudou" p/ validar tudo
   return form.value[key] !== originalForm.value[key];

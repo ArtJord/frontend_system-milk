@@ -14,9 +14,18 @@ const savingEdit = ref(false);
 const editMsg = ref({ type: "", text: "" });
 const editingUser = ref(null);
 
+const showConfirmStatus = ref(false);
+const statusTargetUser = ref(null);
+const statusDesired = ref(true); // true = ativar, false = desativar
+const statusPassword = ref("");
+const statusSaving = ref(false);
+const statusError = ref("");
+
 const ME_CACHE_KEY = (id) => `me_profile_cache_v1_${id}`;
 function writeMeCache(id, profile) {
-  try { localStorage.setItem(ME_CACHE_KEY(id), JSON.stringify(profile)); } catch {}
+  try {
+    localStorage.setItem(ME_CACHE_KEY(id), JSON.stringify(profile));
+  } catch {}
 }
 
 const editSuccess = ref({
@@ -77,36 +86,30 @@ const me = ref({ id: null, cargo: userRole.value });
 async function loadMeQuick() {
   try {
     const { data } = await http.get("/me");
-   const cargo = (data.cargo || data.role || "").toLowerCase();
-   me.value = {
-     id: data.id,
-     cargo,
-     nome: data.nome || data.fullName || data.name || "",
-     email: data.email || "",
-     telefone: data.telefone || data.phone || "",
-     cep: data.cep || data.zip || "",
-     endereco: data.endereco || data.address || "",
-     cidade: data.cidade || data.city || "",
-     estado: data.estado || data.uf || data.state || "",
-   };
+    const cargo = (data.cargo || data.role || "").toLowerCase();
+    me.value = {
+      id: data.id,
+      cargo,
+      nome: data.nome || data.fullName || data.name || "",
+      email: data.email || "",
+      telefone: data.telefone || data.phone || "",
+      cep: data.cep || data.zip || "",
+      endereco: data.endereco || data.address || "",
+      cidade: data.cidade || data.city || "",
+      estado: data.estado || data.uf || data.state || "",
+    };
 
-   
-   userRole.value = cargo;
+    userRole.value = cargo;
 
-  
-   try {
-     localStorage.setItem("user_cargo", cargo);
-     localStorage.setItem("user_role", cargo);
-     localStorage.setItem("cargo", cargo);
-   } catch {}
-    
+    try {
+      localStorage.setItem("user_cargo", cargo);
+      localStorage.setItem("user_role", cargo);
+      localStorage.setItem("cargo", cargo);
+    } catch {}
 
-   
     localStorage.setItem("me_profile", JSON.stringify(me.value));
-  } catch {
-  }
-  }
-
+  } catch {}
+}
 
 onMounted(loadMeQuick);
 
@@ -228,9 +231,9 @@ async function openEdit(u) {
   editMsg.value = { type: "", text: "" };
 
   try {
-    const { data: det } = await http.get(`/usuario/${u.id}`); 
+    const { data: det } = await http.get(`/usuario/${u.id}`);
     const filled = {
-      nome: (det.nome || det.fullName || ""),
+      nome: det.nome || det.fullName || "",
       email: det.email || "",
       telefone: maskPhone(det.telefone || ""),
       cep: formatCEP(det.cep || ""),
@@ -238,12 +241,11 @@ async function openEdit(u) {
       cidade: det.cidade || "",
       estado: toUF(det.estado || ""),
       cargo: (det.cargo || u.cargo || "funcionario").toLowerCase(),
-      ativo: (det.ativo === 1 || det.ativo === true) ? 1 : 0,
+      ativo: det.ativo === 1 || det.ativo === true ? 1 : 0,
     };
     editForm.value = filled;
     showEdit.value = true;
   } catch (e) {
-    
     editForm.value = {
       nome: u.fullName || u.nome || "",
       email: u.email || "",
@@ -258,12 +260,82 @@ async function openEdit(u) {
     showEdit.value = true;
   }
 }
-  
+
 function closeEdit() {
   if (savingEdit.value) return;
   showEdit.value = false;
   editingUser.value = null;
 }
+
+function requestToggleAtivo(user) {
+  statusTargetUser.value = user;
+  const isAtivo = user.ativo === 1 || user.ativo === true;
+  statusDesired.value = !isAtivo; // true => ativar, false => desativar
+  statusPassword.value = "";
+  statusError.value = "";
+  showConfirmStatus.value = true;
+}
+
+function closeStatusModal() {
+  if (statusSaving.value) return;
+  showConfirmStatus.value = false;
+  statusTargetUser.value = null;
+  statusPassword.value = "";
+  statusError.value = "";
+}
+
+async function confirmToggleAtivo() {
+  if (!statusTargetUser.value) return;
+  statusSaving.value = true;
+  statusError.value = "";
+
+  const id = statusTargetUser.value.id;
+  const desired = statusDesired.value ? 1 : 0;
+
+  try {
+    const resp = await http.patch(`/usuario/${id}/ativo`, {
+      ativo: desired,
+      password: statusPassword.value,
+    });
+
+    // Atualiza lista local
+    const ix = users.value.findIndex((u) => u.id === id);
+    if (ix >= 0) {
+      users.value[ix] = {
+        ...users.value[ix],
+        ativo: !!(resp?.data?.ativo ?? desired),
+      };
+    }
+
+    // Se você editar o próprio status (ativar tudo bem; desativar a si impedimos no backend)
+    if (me.value?.id === id) {
+      me.value.ativo = !!(resp?.data?.ativo ?? desired);
+    }
+
+    closeStatusModal();
+
+    // Feedback simples (se você já tem toast/modal, pode trocar)
+    showSuccess.value = true;
+    successText.value = statusDesired.value ? "Usuário ativado." : "Usuário desativado.";
+  } catch (e) {
+    statusError.value =
+      e?.response?.data?.error || e?.userMessage || "Falha ao alterar status.";
+  } finally {
+    statusSaving.value = false;
+  }
+}
+
+function onSuccessOk() {
+    // fecha o popup de sucesso
+    showSuccess.value = false;
+
+    // garante que o modal de confirmação fique fechado e limpo
+    showConfirmStatus.value = false;
+    statusSaving.value = false;
+    statusPassword.value = "";
+    statusError.value = "";
+    statusTargetUser.value = null;
+  }
 
 async function submitEdit() {
   if (!formOkEdit.value || !editingUser.value) return;
@@ -277,30 +349,29 @@ async function submitEdit() {
 
     // 1) Payload básico (nome/email/cargo/ativo)
     const payloadBasic = {
-      nome:  editForm.value.nome.trim(),
+      nome: editForm.value.nome.trim(),
       email: editForm.value.email.trim(),
       cargo: editForm.value.cargo,
-      ativo: editForm.value.ativo ? 1 : 0,
     };
-
-    // Se você permite trocar senha aqui, aplique a mesma lógica que já usa hoje (se existir).
-    // Ex.: payloadBasic.newPassword = ...; payloadBasic.currentPassword = ...;
 
     await http.patch(`/usuario/${id}`, payloadBasic);
 
     // 2) Payload de perfil (telefone/endereço/cidade/estado/cep)
     const payloadPerfil = {
       telefone: maskPhone(editForm.value.telefone).trim() || null,
-      cep:      formatCEP(editForm.value.cep) || null,
+      cep: formatCEP(editForm.value.cep) || null,
       endereco: editForm.value.endereco?.trim() || null,
-      cidade:   editForm.value.cidade?.trim() || null,
-      estado:   toUF(editForm.value.estado) || null,
+      cidade: editForm.value.cidade?.trim() || null,
+      estado: toUF(editForm.value.estado) || null,
     };
 
     // Só chama o endpoint de perfil se houver algum desses campos no form (evita chamada desnecessária)
     const temPerfil =
-      payloadPerfil.telefone || payloadPerfil.cep || payloadPerfil.endereco ||
-      payloadPerfil.cidade   || payloadPerfil.estado;
+      payloadPerfil.telefone ||
+      payloadPerfil.cep ||
+      payloadPerfil.endereco ||
+      payloadPerfil.cidade ||
+      payloadPerfil.estado;
 
     if (temPerfil) {
       await http.patch(`/usuario/${id}/perfil`, payloadPerfil);
@@ -312,14 +383,13 @@ async function submitEdit() {
       users.value[ix] = {
         ...users.value[ix],
         fullName: payloadBasic.nome,
-        email:    payloadBasic.email,
+        email: payloadBasic.email,
         telefone: payloadPerfil.telefone ?? users.value[ix].telefone ?? "",
-        cep:      payloadPerfil.cep ?? users.value[ix].cep ?? "",
+        cep: payloadPerfil.cep ?? users.value[ix].cep ?? "",
         endereco: payloadPerfil.endereco ?? users.value[ix].endereco ?? "",
-        cidade:   payloadPerfil.cidade ?? users.value[ix].cidade ?? "",
-        estado:   payloadPerfil.estado ?? users.value[ix].estado ?? "",
-        cargo:    (payloadBasic.cargo || "funcionario").toLowerCase(),
-        ativo:    payloadBasic.ativo,
+        cidade: payloadPerfil.cidade ?? users.value[ix].cidade ?? "",
+        estado: payloadPerfil.estado ?? users.value[ix].estado ?? "",
+        cargo: (payloadBasic.cargo || "funcionario").toLowerCase(),
       };
     }
 
@@ -327,22 +397,22 @@ async function submitEdit() {
     if (id === me.value.id) {
       const snapshot = {
         fullName: payloadBasic.nome,
-        email:    payloadBasic.email,
+        email: payloadBasic.email,
         telefone: payloadPerfil.telefone ?? "",
         endereco: payloadPerfil.endereco ?? "",
-        cidade:   payloadPerfil.cidade ?? "",
-        estado:   payloadPerfil.estado ?? "",
-        cep:      payloadPerfil.cep ?? "",
+        cidade: payloadPerfil.cidade ?? "",
+        estado: payloadPerfil.estado ?? "",
+        cep: payloadPerfil.cep ?? "",
       };
       writeMeCache(me.value.id, snapshot);
       me.value.cargo = (payloadBasic.cargo || "").toLowerCase();
     }
 
     editMsg.value = { type: "success", text: "Usuário atualizado com sucesso." };
-showSuccess.value = true;
-successText.value = "Usuário atualizado com sucesso.";
-showEdit.value = false;
-editingUser.value = null;
+    showSuccess.value = true;
+    successText.value = "Usuário atualizado com sucesso.";
+    showEdit.value = false;
+    editingUser.value = null;
   } catch (e) {
     editMsg.value = {
       type: "error",
@@ -353,7 +423,6 @@ editingUser.value = null;
   }
 }
 
-
 async function onToggleActive(u) {
   if (!canManageUsers.value) return;
   try {
@@ -363,11 +432,6 @@ async function onToggleActive(u) {
   } catch (e) {
     alert(e?.response?.data?.message || "Falha ao alterar status.");
   }
-}
-
-function onDeleteUser(u) {
-  if (!canManageUsers.value) return;
-  console.log("excluir usuário", u);
 }
 
 async function loadUsers() {
@@ -514,13 +578,15 @@ onMounted(loadUsers);
             </button>
 
             <button
-              @click="onToggleActive(u)"
+              type="button"
+              :disabled="savingEdit || statusSaving"
+              @click="requestToggleAtivo(u)"
               :class="
                 u.ativo === 1 || u.ativo === true
                   ? 'bg-red-500 hover:bg-red-600 text-white'
                   : 'bg-black text-white hover:opacity-90'
               "
-              class="px-3 py-2 rounded flex items-center gap-2"
+              class="px-3 py-2 rounded flex items-center gap-2 disabled:opacity-50"
               title="Ativar/Desativar"
             >
               <svg
@@ -546,24 +612,6 @@ onMounted(loadUsers);
                 <path d="M6 12h12" />
               </svg>
               {{ u.ativo === 1 || u.ativo === true ? "Desativar" : "Ativar" }}
-            </button>
-
-            <button
-              @click="onDeleteUser(u)"
-              title="Excluir"
-              class="p-2 rounded bg-red-500 hover:bg-red-600 text-white"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.6"
-              >
-                <path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6" />
-                <path d="M10 11v6M14 11v6" />
-              </svg>
             </button>
           </div>
           <div v-else class="text-xs text-slate-500">Sem permissões de gerenciamento</div>
@@ -948,8 +996,11 @@ onMounted(loadUsers);
                   :true-value="1"
                   :false-value="0"
                   class="accent-emerald-600"
+                  disabled
                 />
-                <span class="text-sm text-slate-700">Usuário ativo</span>
+                <span class="text-xs text-slate-500 ml-2">
+                  Para alterar, use o botão Ativar/Desativar nas ações.
+                </span>
               </label>
             </div>
           </div>
@@ -995,19 +1046,76 @@ onMounted(loadUsers);
     </div>
   </div>
 
+  <!-- 🔒 MODAL: confirmar ativação/desativação -->
+  <Transition name="fade">
+    <div
+      v-if="showConfirmStatus"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+    >
+      <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
+        <h3 class="text-lg font-semibold mb-2">
+          {{ statusDesired ? "Ativar usuário" : "Desativar usuário" }}
+        </h3>
+        <p class="text-gray-600 mb-4">
+          Confirme sua senha para {{ statusDesired ? "ativar" : "desativar" }}
+          <strong>{{ statusTargetUser?.fullName || "o usuário" }}</strong
+          >.
+        </p>
+
+        <label class="block text-sm font-medium text-gray-700 mb-1">Sua senha</label>
+        <input
+          type="password"
+          v-model="statusPassword"
+          class="w-full border rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring"
+          placeholder="Digite sua senha"
+        />
+
+        <p v-if="statusError" class="text-red-600 text-sm mb-3">{{ statusError }}</p>
+
+        <div class="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            class="px-4 py-2 rounded-lg border"
+            @click="closeStatusModal"
+            :disabled="statusSaving"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:opacity-90 disabled:opacity-50"
+            :disabled="!statusPassword || statusSaving"
+            @click="confirmToggleAtivo"
+          >
+            {{ statusSaving ? "Salvando..." : statusDesired ? "Ativar" : "Desativar" }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </Transition>
+
   <!-- ✅ POPUP DE SUCESSO -->
   <Transition name="fade">
-  <div v-if="showSuccess" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-    <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm text-center">
-      <h3 class="text-lg font-semibold mb-2">Alterações salvas ✅</h3>
-      <p class="text-gray-600 mb-4">{{ successText || 'Usuário atualizado com sucesso.' }}</p>
-      <button type="button"
-              class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:opacity-90"
-              @click="showSuccess = false">
-        OK
-      </button>
+    <div
+      v-if="showSuccess"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      @click.self="onSuccessOk"
+      @keydown.esc="onSuccessOk"
+      tabindex="0"
+    >
+      <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm text-center">
+        <h3 class="text-lg font-semibold mb-2">Alterações salvas ✅</h3>
+        <p class="text-gray-600 mb-4">
+          {{ successText || "Usuário atualizado com sucesso." }}
+        </p>
+        <button
+          type="button"
+          class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:opacity-90"
+          @click="onSuccessOk()"
+        >
+          OK
+        </button>
+      </div>
     </div>
-  </div>
-</Transition>
-  
+  </Transition>
 </template>
