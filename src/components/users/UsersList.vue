@@ -194,6 +194,9 @@ const editForm = ref({
   ativo: 1,
 });
 
+const showSuccess = ref(false);
+const successText = ref("");
+
 const emailOkEdit = computed(() => /.+@.+\..+/.test(editForm.value.email));
 const cepOkEdit = computed(() => {
   const c = String(editForm.value.cep || "").trim();
@@ -265,98 +268,88 @@ function closeEdit() {
 async function submitEdit() {
   if (!formOkEdit.value || !editingUser.value) return;
 
-  if (
-    editingUser.value.id === me.value.id &&
-    editForm.value.cargo === "funcionario" &&
-    (me.value.cargo === "gerente" || me.value.cargo === "administrador")
-  ) {
-    editMsg.value = {
-      type: "error",
-      text: "Você não pode rebaixar o próprio cargo para 'funcionário'.",
-    };
-    return;
-  }
-
+  // trava duplo clique
   savingEdit.value = true;
   editMsg.value = { type: "", text: "" };
 
   try {
-    const payload = {
+    const id = editingUser.value.id;
+
+    // 1) Payload básico (nome/email/cargo/ativo)
+    const payloadBasic = {
       nome:  editForm.value.nome.trim(),
       email: editForm.value.email.trim(),
+      cargo: editForm.value.cargo,
+      ativo: editForm.value.ativo ? 1 : 0,
+    };
 
+    // Se você permite trocar senha aqui, aplique a mesma lógica que já usa hoje (se existir).
+    // Ex.: payloadBasic.newPassword = ...; payloadBasic.currentPassword = ...;
+
+    await http.patch(`/usuario/${id}`, payloadBasic);
+
+    // 2) Payload de perfil (telefone/endereço/cidade/estado/cep)
+    const payloadPerfil = {
       telefone: maskPhone(editForm.value.telefone).trim() || null,
       cep:      formatCEP(editForm.value.cep) || null,
       endereco: editForm.value.endereco?.trim() || null,
       cidade:   editForm.value.cidade?.trim() || null,
       estado:   toUF(editForm.value.estado) || null,
-
-      cargo: editForm.value.cargo,
-    
-      ativo: editForm.value.ativo ? 1 : 0,
     };
 
-    await http.patch(`/usuario/${editingUser.value.id}`, payload);
+    // Só chama o endpoint de perfil se houver algum desses campos no form (evita chamada desnecessária)
+    const temPerfil =
+      payloadPerfil.telefone || payloadPerfil.cep || payloadPerfil.endereco ||
+      payloadPerfil.cidade   || payloadPerfil.estado;
 
-    const ix = users.value.findIndex((x) => x.id === editingUser.value.id);
+    if (temPerfil) {
+      await http.patch(`/usuario/${id}/perfil`, payloadPerfil);
+    }
+
+    // Atualiza o array local de usuários (UI imediata)
+    const ix = users.value.findIndex((x) => x.id === id);
     if (ix >= 0) {
       users.value[ix] = {
         ...users.value[ix],
-        fullName: payload.nome,
-        email:    payload.email,
-        telefone: payload.telefone ?? "",
-        cep:      payload.cep ?? "",
-        endereco: payload.endereco ?? "",
-        cidade:   payload.cidade ?? "",
-        estado:   payload.estado ?? "",
-        cargo:    (payload.cargo || "funcionario").toLowerCase(),
-        ativo:    payload.ativo,
+        fullName: payloadBasic.nome,
+        email:    payloadBasic.email,
+        telefone: payloadPerfil.telefone ?? users.value[ix].telefone ?? "",
+        cep:      payloadPerfil.cep ?? users.value[ix].cep ?? "",
+        endereco: payloadPerfil.endereco ?? users.value[ix].endereco ?? "",
+        cidade:   payloadPerfil.cidade ?? users.value[ix].cidade ?? "",
+        estado:   payloadPerfil.estado ?? users.value[ix].estado ?? "",
+        cargo:    (payloadBasic.cargo || "funcionario").toLowerCase(),
+        ativo:    payloadBasic.ativo,
       };
     }
 
-    if (editingUser.value.id === me.value.id) {
+    // Se o gerente editou a SI próprio perfil, atualiza o cache local do "me" (mesma lógica que você já tem)
+    if (id === me.value.id) {
       const snapshot = {
-        fullName: payload.nome,
-        email:    payload.email,
-        telefone: payload.telefone,
-        endereco: payload.endereco,
-        cidade:   payload.cidade,
-        estado:   payload.estado,
-        cep:      payload.cep,
+        fullName: payloadBasic.nome,
+        email:    payloadBasic.email,
+        telefone: payloadPerfil.telefone ?? "",
+        endereco: payloadPerfil.endereco ?? "",
+        cidade:   payloadPerfil.cidade ?? "",
+        estado:   payloadPerfil.estado ?? "",
+        cep:      payloadPerfil.cep ?? "",
       };
       writeMeCache(me.value.id, snapshot);
-
-      me.value.cargo = (payload.cargo || "").toLowerCase();
-      userRole.value = me.value.cargo;
-      try {
-        localStorage.setItem("user_cargo", me.value.cargo);
-        localStorage.setItem("user_role",  me.value.cargo);
-        localStorage.setItem("cargo",      me.value.cargo);
-      } catch {}
-
-      emit("me-updated");
+      me.value.cargo = (payloadBasic.cargo || "").toLowerCase();
     }
 
-    editMsg.value = { type: "", text: "" };
-    savingEdit.value = false;
-
-    await loadUsers();
-
-    editSuccess.value = {
-      open: true,
-      title: "Tudo certo!",
-      text: "Usuário atualizado com sucesso.",
-    };
+    editMsg.value = { type: "success", text: "Usuário atualizado com sucesso." };
+showSuccess.value = true;
+successText.value = "Usuário atualizado com sucesso.";
+showEdit.value = false;
+editingUser.value = null;
   } catch (e) {
     editMsg.value = {
       type: "error",
-      text:
-        e?.response?.data?.message ||
-        e?.userMessage ||
-        "Não foi possível salvar as alterações.",
+      text: e?.userMessage || "Falha ao salvar alterações do usuário.",
     };
   } finally {
-    if (savingEdit.value) savingEdit.value = false;
+    savingEdit.value = false;
   }
 }
 
@@ -1003,58 +996,18 @@ onMounted(loadUsers);
   </div>
 
   <!-- ✅ POPUP DE SUCESSO -->
-  <transition name="fade">
-    <div v-if="editSuccess.open" class="fixed inset-0 z-[60] grid place-items-center">
-      <!-- backdrop -->
-      <div
-        class="absolute inset-0 bg-black/50 backdrop-blur-[1px]"
-        @click="closeEditSuccess"
-      ></div>
-
-      <!-- card -->
-      <div
-        class="relative w-[min(92vw,44rem)] rounded-2xl bg-white shadow-2xl ring-1 ring-slate-900/10 p-6 sm:p-8"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="edit-success-title"
-      >
-        <div class="flex items-start gap-4">
-          <div
-            class="h-12 w-12 shrink-0 rounded-2xl grid place-items-center bg-emerald-100 text-emerald-700"
-          >
-            <svg
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-            >
-              <path d="M20 6L9 17l-5-5" stroke-width="2" />
-            </svg>
-          </div>
-
-          <div class="flex-1">
-            <h3
-              id="edit-success-title"
-              class="text-xl sm:text-2xl font-semibold text-slate-900"
-            >
-              {{ editSuccess.title }}
-            </h3>
-            <p class="text-slate-600 mt-2 text-base leading-relaxed">
-              {{ editSuccess.text }}
-            </p>
-          </div>
-        </div>
-
-        <div class="mt-8 flex justify-end gap-3">
-          <button
-            @click="closeEditSuccess"
-            class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 text-white px-5 py-2.5 font-medium hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-500/30"
-          >
-            OK
-          </button>
-        </div>
-      </div>
+  <Transition name="fade">
+  <div v-if="showSuccess" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm text-center">
+      <h3 class="text-lg font-semibold mb-2">Alterações salvas ✅</h3>
+      <p class="text-gray-600 mb-4">{{ successText || 'Usuário atualizado com sucesso.' }}</p>
+      <button type="button"
+              class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:opacity-90"
+              @click="showSuccess = false">
+        OK
+      </button>
     </div>
-  </transition>
+  </div>
+</Transition>
+  
 </template>
