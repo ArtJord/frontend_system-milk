@@ -29,22 +29,9 @@ const router = createRouter({
         { path: 'dashboard', component: () => import('@/views/Dashboard.vue'), meta: { title: 'Dashboard' } },
         { path: 'animais', component: () => import('@/views/Animais.vue'), meta: { title: 'Animais' } },
         { path: 'leite', component: () => import('@/views/Leite.vue'), meta: { title: 'Leite' } },
-
-        {
-          path: 'lucros', component: () => import('@/views/Lucro.vue'), meta: { title: 'Lucro' }
-        },
-      
-
-        {
-          path: '/configuracoes',
-          component: () => import('@/views/Settings.vue'),
-          meta: { title: 'Configurações' }
-        },
-
-
-
+        { path: 'lucros', component: () => import('@/views/Lucro.vue'), meta: { title: 'Lucro' } },
+        { path: '/configuracoes', component: () => import('@/views/Settings.vue'), meta: { title: 'Configurações' } },
         { path: 'despesas', component: () => import('@/views/Despesa.vue'), meta: { title: 'Despesas' } },
-        
       ],
     },
 

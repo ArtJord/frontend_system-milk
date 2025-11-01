@@ -1,0 +1,639 @@
+<script setup>
+import { ref, onMounted, computed } from "vue";
+import http from "@/lib/http";
+
+const users = ref([]);
+const loading = ref(false);
+const error = ref("");
+const showPwd = ref(false);
+
+function getUserRole() {
+  const s =
+    localStorage.getItem("user_cargo") ||
+    localStorage.getItem("user_role") ||
+    localStorage.getItem("cargo");
+  return s ? String(s).toLowerCase() : "usuario";
+}
+const userRole = ref(getUserRole());
+const canCreateUser = computed(() => ["gerente", "administrador"].includes(userRole.value));
+const canManageUsers = computed(() => ["gerente", "administrador"].includes(userRole.value));
+const canChangeRole = computed(() => {
+  const r = getUserRole();
+  return r === "gerente" || r === "administrador";
+});
+
+function toUF(v) {
+  return String(v || "").replace(/[^A-Za-z]/g, "").slice(0, 2).toUpperCase();
+}
+function formatCEP(v) {
+  const n = String(v || "").replace(/\D/g, "").slice(0, 8);
+  return n.length > 5 ? `${n.slice(0, 5)}-${n.slice(5)}` : n;
+}
+function maskPhone(v) {
+  const d = String(v || "").replace(/\D/g, "").slice(0, 11);
+  if (d.length <= 10) return d.replace(/(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3").trim();
+  return d.replace(/(\d{2})(\d{5})(\d{0,4})/, "($1) $2-$3").trim();
+}
+
+const me = ref({ id: null, cargo: userRole.value });
+async function loadMeQuick() {
+  try {
+    const { data } = await http.get("/me");
+    me.value = { id: data.id, cargo: (data.cargo || data.role || "").toLowerCase() };
+  } catch {}
+}
+onMounted(loadMeQuick);
+
+const showCreate = ref(false);
+const saving = ref(false);
+const createMsg = ref({ type: "", text: "" });
+const showPwd = ref(false);
+const cargos = ["gerente", "administrador", "funcionario"];
+
+const form = ref({
+  nome: "",
+  email: "",
+  senha: "",
+  cargo: "funcionario",
+});
+const emailOk = computed(() => /.+@.+\..+/.test(form.value.email));
+const senhaOk = computed(() => form.value.senha.length >= 6);
+const nomeOk = computed(() => form.value.nome.trim().length >= 2);
+const formOk = computed(() => emailOk.value && senhaOk.value && nomeOk.value);
+
+unction openCreate() {
+  if (!canCreateUser.value) {
+    createMsg.value = { type: "error", text: "Apenas gerente/administrador podem criar usuários." };
+    return;
+  }
+  createMsg.value = { type: "", text: "" };
+  form.value = { nome: "", email: "", senha: "", cargo: "funcionario" };
+  showCreate.value = true;
+}
+function closeCreate() {
+  if (saving.value) return;
+  showCreate.value = false;
+}
+
+async function submitCreate() {
+  if (!formOk.value || saving.value) return;
+  saving.value = true;
+  createMsg.value = { type: "", text: "" };
+  try {
+    await http.post("/usuario", {
+      nome: form.value.nome.trim(),
+      email: form.value.email.trim(),
+      senha: form.value.senha,
+      cargo: form.value.cargo,
+    });
+    createMsg.value = { type: "success", text: "Usuário criado com sucesso." };
+    await loadUsers();
+    showCreate.value = false;
+  } catch (e) {
+    const status = e?.response?.status;
+    const msg = e?.response?.data?.message || e?.userMessage || e?.message;
+    createMsg.value = {
+      type: "error",
+      text:
+        status === 403
+          ? "Acesso negado. Somente gerente/administrador pode criar usuários."
+          : msg || "Não foi possível criar o usuário.",
+    };
+  } finally {
+    saving.value = false;
+  }
+}
+
+const showEdit = ref(false);
+const savingEdit = ref(false);
+const editMsg = ref({ type: "", text: "" });
+const editingUser = ref(null);
+
+const editForm = ref({
+  nome: "",
+  email: "",
+  telefone: "",
+  cep: "",
+  endereco: "",
+  cidade: "",
+  estado: "",
+  cargo: "funcionario",
+  ativo: 1,
+});
+
+const emailOkEdit = computed(() => /.+@.+\..+/.test(editForm.value.email));
+const cepOkEdit = computed(() => {
+  const c = String(editForm.value.cep || "").trim();
+  if (!c) return true;
+  return /^\d{5}-\d{3}$/.test(c);
+});
+const ufOkEdit = computed(() => {
+  const uf = String(editForm.value.estado || "");
+  if (!uf) return true;
+  return /^[A-Z]{2}$/.test(uf);
+});
+const telefoneOkEdit = computed(() => {
+  const t = String(editForm.value.telefone || "").trim();
+  if (!t) return true;
+  return /^\(\d{2}\)\s?\d{4,5}-\d{4}$/.test(t);
+});
+const formOkEdit = computed(
+  () =>
+    !!editForm.value.nome &&
+    emailOkEdit.value &&
+    cepOkEdit.value &&
+    ufOkEdit.value &&
+    telefoneOkEdit.value
+);
+
+function openEdit(u) {
+  if (!canManageUsers.value) return;
+  editingUser.value = u;
+  editMsg.value = { type: "", text: "" };
+  editForm.value = {
+    nome: u.fullName || u.nome || "",
+    email: u.email || "",
+    telefone: maskPhone(u.telefone || ""),
+    cep: formatCEP(u.cep || ""),
+    endereco: u.endereco || "",
+    cidade: u.cidade || "",
+    estado: toUF(u.estado || ""),
+    cargo: (u.cargo || "funcionario").toLowerCase(),
+    ativo: u.ativo === 1 || u.ativo === true ? 1 : 0,
+  };
+  showEdit.value = true;
+}
+function closeEdit() {
+  if (savingEdit.value) return;
+  showEdit.value = false;
+  editingUser.value = null;
+}
+
+async function submitEdit() {
+  if (!formOkEdit.value || !editingUser.value) return;
+
+  // anti auto-rebaixamento
+  if (
+    editingUser.value.id === me.value.id &&
+    editForm.value.cargo === "funcionario" &&
+    (me.value.cargo === "gerente" || me.value.cargo === "administrador")
+  ) {
+    editMsg.value = { type: "error", text: "Você não pode rebaixar o próprio cargo para 'funcionário'." };
+    return;
+  }
+
+  savingEdit.value = true;
+  editMsg.value = { type: "", text: "" };
+
+  try {
+    const payload = {
+      nome: editForm.value.nome.trim(),
+      email: editForm.value.email.trim(),
+      telefone: maskPhone(editForm.value.telefone).trim(),
+      cep: formatCEP(editForm.value.cep),
+      endereco: editForm.value.endereco?.trim() || "",
+      cidade: editForm.value.cidade?.trim() || "",
+      estado: toUF(editForm.value.estado),
+      cargo: editForm.value.cargo,
+      ativo: editForm.value.ativo ? 1 : 0,
+    };
+
+    await http.put(`/usuario/${editingUser.value.id}`, payload);
+
+    // atualiza na lista local
+    const ix = users.value.findIndex((x) => x.id === editingUser.value.id);
+    if (ix >= 0) {
+      users.value[ix] = {
+        ...users.value[ix],
+        fullName: payload.nome,
+        email: payload.email,
+        telefone: payload.telefone,
+        cep: payload.cep,
+        endereco: payload.endereco,
+        cidade: payload.cidade,
+        estado: payload.estado,
+        cargo: payload.cargo,
+        ativo: payload.ativo,
+      };
+    }
+
+    closeEdit();
+  } catch (e) {
+    editMsg.value = {
+      type: "error",
+      text: e?.response?.data?.message || e?.userMessage || "Não foi possível salvar as alterações.",
+    };
+  } finally {
+    savingEdit.value = false;
+  }
+}
+
+async function onToggleActive(u) {
+  if (!canManageUsers.value) return;
+  try {
+    const novo = u.ativo === 1 || u.ativo === true ? 0 : 1;
+    await http.patch(`/usuario/${u.id}`, { ativo: novo });
+    u.ativo = novo;
+  } catch (e) {
+    alert(e?.response?.data?.message || "Falha ao alterar status.");
+  }
+}
+function onDeleteUser(u) {
+  if (!canManageUsers.value) return;
+  console.log("excluir usuário", u);
+}
+
+async function loadUsers() {
+  loading.value = true;
+  error.value = "";
+  try {
+    const { data } = await http.get("/usuarios");
+    users.value = Array.isArray(data) ? data : [];
+  } catch (e) {
+    error.value = e?.userMessage || "Não foi possível carregar usuários.";
+  } finally {
+    loading.value = false;
+  }
+}
+onMounted(loadUsers);
+</script>
+
+
+<template>
+  <div class="w-full">
+    <!-- Cabeçalho -->
+    <div class="mb-6 flex items-center justify-between">
+      <div>
+        <h2 class="text-2xl font-bold text-slate-800">Gerenciar Usuários</h2>
+        <p class="text-slate-500 mt-1">Gerencie contas de usuários e permissões</p>
+      </div>
+      <button
+        v-if="canCreateUser"
+        @click="openCreate"
+        class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2"
+        title="Criar novo usuário"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+        Novo Usuário
+      </button>
+    </div>
+
+    <!-- Loading & Error -->
+    <div v-if="loading" class="p-6 bg-white rounded-lg shadow-sm text-slate-600">Carregando usuários...</div>
+    <div v-else-if="error" class="p-4 mb-4 rounded bg-red-50 text-red-700">{{ error }}</div>
+
+    <!-- Lista -->
+    <div v-else class="space-y-4">
+      <template v-for="u in users" :key="u.id">
+        <div class="flex items-center justify-between bg-white p-4 rounded-lg shadow-sm border">
+          <!-- Dados -->
+          <div class="flex items-center gap-4">
+            <div class="h-12 w-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="3" />
+              </svg>
+            </div>
+
+            <div>
+              <div class="flex items-center gap-3">
+                <div class="text-lg font-semibold text-slate-800">{{ u.fullName }}</div>
+                <div v-if="u.cargo" class="text-xs px-2 py-1 rounded-full bg-sky-100 text-sky-700">{{ u.cargo }}</div>
+                <div v-if="u.ativo === 1 || u.ativo === true" class="text-xs px-2 py-1 rounded-full bg-black text-white">
+                  Ativo
+                </div>
+                <div v-else class="text-xs px-2 py-1 rounded-full bg-gray-200 text-slate-700">Inativo</div>
+              </div>
+
+              <div class="text-sm text-slate-500 mt-1">{{ u.email }}</div>
+              <div class="text-xs text-slate-400 mt-1">
+                Último login: {{ u.ultimoLogin || "N/A" }} | Criado em: {{ u.criadoEm || "N/A" }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Ações -->
+          <div class="flex items-center gap-3" v-if="canManageUsers">
+            <button @click="openEdit(u)" title="Editar" class="p-2 rounded border hover:bg-slate-50">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+              </svg>
+            </button>
+
+            <button
+              @click="onToggleActive(u)"
+              :class="u.ativo === 1 || u.ativo === true ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-black text-white hover:opacity-90'"
+              class="px-3 py-2 rounded flex items-center gap-2"
+              title="Ativar/Desativar"
+            >
+              <svg v-if="u.ativo === 1 || u.ativo === true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                <path d="M18 6L6 18" />
+              </svg>
+              <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                <path d="M6 12h12" />
+              </svg>
+              {{ u.ativo === 1 || u.ativo === true ? "Desativar" : "Ativar" }}
+            </button>
+
+            <button @click="onDeleteUser(u)" title="Excluir" class="p-2 rounded bg-red-500 hover:bg-red-600 text-white">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                <path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6" />
+                <path d="M10 11v6M14 11v6" />
+              </svg>
+            </button>
+          </div>
+          <div v-else class="text-xs text-slate-500">Sem permissões de gerenciamento</div>
+        </div>
+      </template>
+
+      <div v-if="!users.length" class="p-6 bg-white rounded-lg shadow-sm text-slate-600">
+        Nenhum usuário encontrado.
+      </div>
+    </div>
+
+    <!-- ================== MODAL: NOVO USUÁRIO ================== -->
+    <div v-if="showCreate" class="fixed inset-0 z-50 grid place-items-center">
+      <div class="absolute inset-0 bg-black/40" @click="closeCreate" />
+      <div class="relative w-full max-w-2xl rounded-2xl bg-white shadow-2xl ring-1 ring-black/5">
+        <!-- Header -->
+        <div class="flex items-center justify-between px-6 py-5 border-b">
+          <div class="flex items-center gap-3">
+            <div class="h-10 w-10 grid place-items-center rounded-full bg-emerald-100 text-emerald-700">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-xl font-semibold text-slate-900">Novo Usuário</h3>
+              <p class="text-sm text-slate-500">Preencha os dados para criar um novo usuário.</p>
+            </div>
+          </div>
+          <button @click="closeCreate" class="rounded-md p-2 text-slate-500 hover:bg-slate-100" aria-label="Fechar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Body -->
+        <div class="px-6 py-5 space-y-5">
+          <div v-if="createMsg.text" :class="createMsg.type === 'success' ? 'text-emerald-600' : 'text-red-600'">
+            {{ createMsg.text }}
+          </div>
+
+          <!-- Nome -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700">Nome completo</label>
+            <input
+              v-model.trim="form.nome"
+              type="text"
+              placeholder="Nome e sobrenome"
+              class="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+            />
+            <p v-if="form.nome && !nomeOk" class="mt-1 text-xs text-red-600">Informe ao menos 2 caracteres.</p>
+          </div>
+
+          <!-- Email -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700">Email</label>
+            <input
+              v-model.trim="form.email"
+              type="email"
+              placeholder="email@exemplo.com"
+              class="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+            />
+            <p v-if="form.email && !emailOk" class="mt-1 text-xs text-red-600">Email inválido.</p>
+          </div>
+
+          <!-- Senha + Cargo -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700">Senha</label>
+              <div class="mt-2 relative">
+                <input
+                  :type="showPwd ? 'text' : 'password'"
+                  v-model="form.senha"
+                  placeholder="Mínimo 6 caracteres"
+                  class="w-full rounded-xl border border-slate-300 px-4 py-3 pr-11 text-base outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                />
+                <button
+                  type="button"
+                  class="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-2 text-slate-500 hover:bg-slate-100"
+                  @click="showPwd = !showPwd"
+                  aria-label="Mostrar/ocultar senha"
+                >
+                  <svg v-if="!showPwd" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                  <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a20.28 20.28 0 0 1 5.06-5.94" />
+                    <path d="M1 1l22 22" />
+                  </svg>
+                </button>
+              </div>
+              <p v-if="form.senha && !senhaOk" class="mt-1 text-xs text-red-600">Mínimo de 6 caracteres.</p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-slate-700">Cargo</label>
+              <div v-if="canChangeRole" class="mt-2 flex flex-wrap gap-2">
+                <button
+                  v-for="c in cargos"
+                  :key="c"
+                  type="button"
+                  @click="form.cargo = c"
+                  class="rounded-xl border min-w-[120px] px-4 py-2.5 text-sm font-medium transition text-center capitalize"
+                  :class="form.cargo === c ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-300 hover:bg-slate-50 text-slate-700'"
+                >
+                  {{ c }}
+                </button>
+              </div>
+              <div v-else class="mt-2">
+                <div class="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-700">
+                  <span class="inline-block h-2 w-2 rounded-full bg-emerald-500"></span>
+                  {{ form.cargo }}
+                </div>
+                <p class="mt-1 text-xs text-slate-500">Apenas gerente/administrador podem alterar o cargo.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t">
+          <button class="px-4 py-2 rounded-lg border hover:bg-slate-50" @click="closeCreate" :disabled="saving">Cancelar</button>
+          <button
+            class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 text-white font-medium px-5 py-2.5 hover:bg-emerald-700 disabled:opacity-50"
+            :disabled="!formOk || saving"
+            @click="submitCreate"
+          >
+            <svg v-if="saving" class="animate-spin h-4 w-4" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" />
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+            </svg>
+            <span v-else>Salvar</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================== MODAL: EDITAR USUÁRIO ================== -->
+    <div v-if="showEdit" class="fixed inset-0 z-50 grid place-items-center">
+      <div class="absolute inset-0 bg-black/40" @click="closeEdit"></div>
+
+      <div class="relative w-full max-w-2xl rounded-2xl bg-white shadow-2xl ring-1 ring-black/5">
+        <!-- Header -->
+        <div class="flex items-center justify-between px-6 py-5 border-b">
+          <div class="flex items-center gap-3">
+            <div class="h-10 w-10 grid place-items-center rounded-full bg-sky-100 text-sky-700">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-xl font-semibold text-slate-900">Editar usuário</h3>
+              <p class="text-sm text-slate-500">Atualize os dados e permissões</p>
+            </div>
+          </div>
+          <button @click="closeEdit" class="rounded-md p-2 text-slate-500 hover:bg-slate-100" aria-label="Fechar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Body -->
+        <div class="px-6 py-5 space-y-5">
+          <div v-if="editMsg.text" :class="editMsg.type==='error' ? 'text-red-600' : 'text-emerald-600'">{{ editMsg.text }}</div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-slate-700">Nome</label>
+              <input
+                v-model.trim="editForm.nome"
+                type="text"
+                placeholder="Nome completo"
+                class="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-slate-700">Email</label>
+              <input
+                v-model.trim="editForm.email"
+                type="email"
+                placeholder="email@exemplo.com"
+                class="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+              />
+              <p v-if="editForm.email && !emailOkEdit" class="mt-1 text-xs text-red-600">Email inválido.</p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-slate-700">Telefone</label>
+              <input
+                v-model.trim="editForm.telefone"
+                @blur="editForm.telefone = maskPhone(editForm.telefone)"
+                type="text"
+                placeholder="Ex: (67) 99999-9999"
+                class="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+              />
+              <p v-if="editForm.telefone && !telefoneOkEdit" class="mt-1 text-xs text-red-600">Telefone inválido.</p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-slate-700">CEP</label>
+              <input
+                v-model="editForm.cep"
+                @blur="editForm.cep = formatCEP(editForm.cep)"
+                type="text"
+                placeholder="Ex: 79800-000"
+                class="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+              />
+              <p v-if="editForm.cep && !cepOkEdit" class="mt-1 text-xs text-red-600">CEP inválido.</p>
+            </div>
+
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-slate-700">Endereço</label>
+              <input
+                v-model.trim="editForm.endereco"
+                type="text"
+                placeholder="Ex: Rua Monte Alegre, 1519"
+                class="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-slate-700">Cidade</label>
+              <input
+                v-model.trim="editForm.cidade"
+                type="text"
+                placeholder="Ex: Dourados"
+                class="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-slate-700">Estado (UF)</label>
+              <input
+                v-model="editForm.estado"
+                maxlength="2"
+                @input="editForm.estado = toUF(editForm.estado)"
+                type="text"
+                placeholder="Ex: MS"
+                class="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 uppercase"
+              />
+              <p v-if="editForm.estado && !ufOkEdit" class="mt-1 text-xs text-red-600">Informe 2 letras (UF).</p>
+            </div>
+
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-slate-700">Cargo</label>
+              <div class="mt-2 flex flex-wrap gap-2">
+                <button
+                  v-for="c in cargos"
+                  :key="c"
+                  type="button"
+                  @click="editForm.cargo = c"
+                  class="rounded-xl border min-w-[120px] px-4 py-2.5 text-sm font-medium transition text-center capitalize"
+                  :class="editForm.cargo === c ? 'border-sky-500 bg-sky-50 text-sky-700' : 'border-slate-300 hover:bg-slate-50 text-slate-700'"
+                >
+                  {{ c }}
+                </button>
+              </div>
+            </div>
+
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-slate-700">Status</label>
+              <label class="mt-2 inline-flex items-center gap-2">
+                <input type="checkbox" v-model="editForm.ativo" :true-value="1" :false-value="0" class="accent-emerald-600" />
+                <span class="text-sm text-slate-700">Usuário ativo</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t">
+          <button class="px-4 py-2 rounded-lg border hover:bg-slate-50" @click="closeEdit" :disabled="savingEdit">Cancelar</button>
+          <button
+            class="inline-flex items-center gap-2 rounded-lg bg-sky-600 text-white font-medium px-5 py-2.5 hover:bg-sky-700 disabled:opacity-50"
+            :disabled="!formOkEdit || savingEdit"
+            @click="submitEdit"
+          >
+            <svg v-if="savingEdit" class="animate-spin h-4 w-4" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" />
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+            </svg>
+            <span v-else>Salvar</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+

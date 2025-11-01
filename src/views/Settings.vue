@@ -1,15 +1,15 @@
 <script setup>
 import UsersList from "@/components/users/UsersList.vue";
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import http from "@/lib/http";
 
-const LS_KEY = 'me_profile_cache_v1'
+let LS_KEY = (id) => `me_profile_cache_v1_${id}`;
 
-function readProfileCache() {
-  try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}') } catch { return {} }
+function readProfileCache(id) {
+  try { return JSON.parse(localStorage.getItem(LS_KEY(id)) || '{}'); } catch { return {}; }
 }
-function writeProfileCache(profile) {
-  try { localStorage.setItem(LS_KEY, JSON.stringify(profile)) } catch {}
+function writeProfileCache(id, profile) {
+  try { localStorage.setItem(LS_KEY(id), JSON.stringify(profile)); } catch {}
 }
 
 // estado do usuário
@@ -24,10 +24,10 @@ const user = ref({
   cep: "",
 });
 
-// abas
+
 const tab = ref("perfil");
 
-// formulário
+
 const form = ref({
   fullName: "",
   email: "",
@@ -45,7 +45,11 @@ const loading = ref(false);
 const showPwd = ref({ current: false, next: false, confirm: false });
 const message = ref({ type: "", text: "" }); // success | error
 
-/* ========= Helpers de formatação/validação ========= */
+watch(tab, (v) => {
+  if (v === "perfil") loadMe(); 
+});
+
+
 function toUF(v) {
   return String(v || "")
     .replace(/[^A-Za-z]/g, "")
@@ -68,20 +72,24 @@ function maskPhone(v) {
   return d.replace(/(\d{2})(\d{5})(\d{0,4})/, "($1) $2-$3").trim();
 }
 
-const isDirty = computed(() => {
-  return (
-    form.value.fullName !== user.value.fullName ||
-    form.value.email !== user.value.email ||
-    form.value.telefone !== user.value.telefone ||
-    form.value.endereco !== user.value.endereco ||
-    form.value.cidade !== user.value.cidade ||
-    form.value.estado !== user.value.estado ||
-    form.value.cep !== user.value.cep ||
-    !!form.value.currentPassword ||
-    !!form.value.newPassword ||
-    !!form.value.confirmPassword
-  );
-});
+const dirtyBasic = computed(() =>
+  form.value.fullName !== user.value.fullName ||
+  form.value.email !== user.value.email ||
+  !!form.value.currentPassword ||
+  !!form.value.newPassword ||
+  !!form.value.confirmPassword
+);
+
+const dirtyPerfil = computed(() =>
+  form.value.telefone !== user.value.telefone ||
+  form.value.endereco !== user.value.endereco ||
+  form.value.cidade   !== user.value.cidade   ||
+  form.value.estado   !== user.value.estado   ||
+  form.value.cep      !== user.value.cep
+);
+
+const isDirty = computed(() => dirtyBasic.value || dirtyPerfil.value);
+
 const emailValid = computed(() => /.+@.+\..+/.test(form.value.email));
 const passwordMatch = computed(
   () => !form.value.newPassword || form.value.newPassword === form.value.confirmPassword
@@ -148,7 +156,7 @@ const EyeIcon = {
 
 const feedback = ref({
   open: false,
-  type: "success", // success | error | info
+  type: "success", 
   title: "",
   text: "",
 });
@@ -163,20 +171,30 @@ function closeFeedback() {
 async function loadMe() {
   try {
     const { data } = await http.get("/me");
-    const cache = readProfileCache();
+    const cargo = (data.cargo || data.role || "").toLowerCase();
+   try {
+     localStorage.setItem("user_cargo", cargo);
+     localStorage.setItem("user_role", cargo);
+     localStorage.setItem("cargo", cargo);
+   } catch {}
 
+    
+    const id = data.id;
+    const cache = readProfileCache(id);
+
+   
     const servidor = {
-      id: data.id,
+      id,
       fullName: data.fullName || data.nome || "",
-      email: data.email || "",
+      email:    data.email || "",
       telefone: data.telefone || "",
       endereco: data.endereco || "",
-      cidade: data.cidade || "",
-      estado: (data.estado || "").toUpperCase(),
-      cep: formatCEP(data.cep || ""),
+      cidade:   data.cidade || "",
+      estado:   (data.estado || "").toUpperCase(),
+      cep:      formatCEP(data.cep || ""),
     };
 
-    // Usa o do servidor; se vier vazio, completa com o cache
+    
     const combinado = {
       ...servidor,
       telefone: servidor.telefone || cache.telefone || "",
@@ -189,16 +207,16 @@ async function loadMe() {
     user.value = combinado;
     Object.assign(form.value, combinado);
 
-    
-    writeProfileCache({
-      fullName: user.value.fullName,
-      email: user.value.email,
-      telefone: user.value.telefone,
-      endereco: user.value.endereco,
-      cidade: user.value.cidade,
-      estado: user.value.estado,
-      cep: user.value.cep,
+    writeProfileCache(id, {
+      fullName: combinado.fullName,
+      email:    combinado.email,
+      telefone: combinado.telefone,
+      endereco: combinado.endereco,
+      cidade:   combinado.cidade,
+      estado:   combinado.estado,
+      cep:      combinado.cep,
     });
+
   } catch (e) {
     message.value = { type: "error", text: e?.userMessage || "Falha ao carregar perfil." };
   }
@@ -211,63 +229,65 @@ async function saveChanges() {
   message.value = { type: "", text: "" };
 
   try {
-    const payload = {
-      // backend provavelmente espera "nome"
-      nome: form.value.fullName, // <-- chave compatível com PHP
-      fullName: form.value.fullName, // opcional (para futuro/compat)
-      email: form.value.email,
-      telefone: maskPhone(form.value.telefone).trim(),
-      endereco: form.value.endereco?.trim() || "",
-      cidade: form.value.cidade?.trim() || "",
-      estado: toUF(form.value.estado),
-      cep: formatCEP(form.value.cep),
-    };
+    
+    if (dirtyBasic.value) {
+      const payloadBasic = {
+        fullName: form.value.fullName, 
+        email:    form.value.email,
+      };
 
-    if (
-      form.value.newPassword ||
-      form.value.confirmPassword ||
-      form.value.currentPassword
-    ) {
-      payload.currentPassword = form.value.currentPassword;
-      payload.newPassword = form.value.newPassword;
+      
+      if (form.value.currentPassword || form.value.newPassword || form.value.confirmPassword) {
+        if (!passwordSectionValid.value) {
+          throw new Error("Preencha corretamente os campos de senha.");
+        }
+        payloadBasic.currentPassword = form.value.currentPassword;
+        payloadBasic.newPassword     = form.value.newPassword;
+      }
+
+      await http.patch(`/usuario/${user.value.id}`, payloadBasic);
+
+      
+      user.value.fullName = payloadBasic.fullName;
+      user.value.email    = payloadBasic.email;
     }
 
-    await http.patch(`/usuario/${user.value.id}`, payload);
+  
+    if (dirtyPerfil.value) {
+      const payloadPerfil = {
+        telefone: maskPhone(form.value.telefone).trim() || null,
+        endereco: form.value.endereco?.trim() || null,
+        cidade:   form.value.cidade?.trim()   || null,
+        estado:   toUF(form.value.estado)     || null,
+        cep:      formatCEP(form.value.cep)   || null,
+      };
 
-// atualiza estados locais…
-user.value = {
-  ...user.value,
-  fullName: payload.nome,
-  email: payload.email,
-  telefone: payload.telefone,
-  endereco: payload.endereco,
-  cidade: payload.cidade,
-  estado: payload.estado,
-  cep: payload.cep,
-};
-Object.assign(form.value, user.value);
+      await http.patch(`/usuario/${user.value.id}/perfil`, payloadPerfil);
+     
+      user.value = { ...user.value, ...payloadPerfil };
+    }
 
-writeProfileCache({
-  fullName: user.value.fullName,
-  email: user.value.email,
-  telefone: user.value.telefone,
-  endereco: user.value.endereco,
-  cidade: user.value.cidade,
-  estado: user.value.estado,
-  cep: user.value.cep,
-});
+    Object.assign(form.value, user.value);
 
     // limpa campos de senha
     form.value.currentPassword = "";
     form.value.newPassword = "";
     form.value.confirmPassword = "";
 
+    // grava cache por usuário
+    writeProfileCache(user.value.id, {
+      fullName: user.value.fullName,
+      email:    user.value.email,
+      telefone: user.value.telefone,
+      endereco: user.value.endereco,
+      cidade:   user.value.cidade,
+      estado:   user.value.estado,
+      cep:      user.value.cep,
+    });
+
     showFeedback("Alterações salvas com sucesso.", "success", "Perfil atualizado");
   } catch (e) {
-    const txt =
-      e?.userMessage ||
-      e?.response?.data?.message ||
-      "Não foi possível salvar. Tente novamente.";
+    const txt = e?.userMessage || e?.response?.data?.message || e?.message || "Não foi possível salvar. Tente novamente.";
     showFeedback(txt, "error", "Falha ao salvar");
   } finally {
     loading.value = false;
@@ -656,7 +676,7 @@ function onBlurPhone() {
 
     <!-- Conteúdo: Usuários -->
     <section v-else class="bg-transparent p-0">
-      <UsersList />
+      <UsersList @me-updated="loadMe" />
     </section>
     <!-- Modal de feedback -->
     <div v-if="feedback.open" class="fixed inset-0 z-50 grid place-items-center">

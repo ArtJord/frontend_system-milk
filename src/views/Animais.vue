@@ -662,7 +662,6 @@ function validate() {
   return ok;
 }
 
-// Enviar (criar/editar)
 async function submit() {
   if (!validate()) return;
   saving.value = true;
@@ -670,7 +669,7 @@ async function submit() {
     if (isEditing.value) {
       if (!editingId.value) throw new Error("ID do animal não encontrado para editar.");
 
-      // monta diff: só campos que mudaram
+      
       const diff = {};
       Object.keys(form.value).forEach((k) => {
         const vNow = form.value[k];
@@ -687,7 +686,7 @@ async function submit() {
         }
       });
 
-      // ✅ garanta campos obrigatórios no PUT (mesmo sem mudança)
+      
       REQUIRED_ON_UPDATE.forEach((k) => {
         const v = form.value[k];
         if (
