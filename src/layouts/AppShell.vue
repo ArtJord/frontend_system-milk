@@ -46,6 +46,14 @@
         >
           Despesas
         </RouterLink>
+
+        <RouterLink
+          to="/relatorios"
+          class="block rounded-md px-3 py-2 hover:bg-gray-100"
+          active-class="bg-gray-100 font-medium"
+        >
+          Relatórios
+        </RouterLink>
         
         <RouterLink
           to="/configuracoes"
