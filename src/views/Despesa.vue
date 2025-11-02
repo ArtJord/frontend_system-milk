@@ -477,6 +477,7 @@
 <script>
 import { ref, reactive, computed, watch, onMounted } from "vue";
 import http from "@/lib/http";
+import { formatDateBR } from "@/utils/date";
 
 export default {
   name: "DespesaView",
@@ -675,6 +676,21 @@ export default {
       }
     };
 
+    const DATE_KEYS = [
+  "data_despesa",
+  "data_vencimento",
+  "data_pagamento",
+];
+
+function normalizeDateOnly(obj) {
+  DATE_KEYS.forEach((k) => {
+    const v = obj[k];
+    if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+      obj[k] = v; // mantém como veio do <input type="date">
+    }
+  });
+}
+
     // salvar
     const save = async () => {
       saving.value = true;
@@ -704,6 +720,8 @@ export default {
           if (typeof payload[k] === "string" && payload[k].trim() === "")
             payload[k] = null;
         }
+
+        normalizeDateOnly(payload);
         delete payload.valor_total;
 
         let res;
@@ -748,7 +766,7 @@ export default {
         maximumFractionDigits: 2,
       });
     };
-    const fmtData = (v) => (v ? new Date(v).toLocaleDateString("pt-BR") : "—");
+    const fmtData = (v) => (v ? formatDateBR(v) : "—");
 
     // mount
     onMounted(loadList);

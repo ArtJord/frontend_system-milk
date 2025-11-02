@@ -472,6 +472,7 @@
 import { ref, computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import http from "@/lib/http";
+import { formatDateBR } from "@/utils/date";
 
 // Recupera cargo do usuário
 function getUserRole() {
@@ -485,7 +486,9 @@ function getUserRole() {
     const t = localStorage.getItem("auth_token");
     if (t && t.split?.(".").length === 3) {
       try {
-        const payload = JSON.parse(atob(t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+        const payload = JSON.parse(
+          atob(t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))
+        );
         role = payload.role || payload.cargo;
       } catch {}
     }
@@ -566,8 +569,7 @@ const fmtNumero = (n) => {
 };
 const fmtData = (iso) => {
   if (!iso) return "—";
-  const d = new Date(iso);
-  return d.toLocaleDateString("pt-BR");
+  return formatDateBR(iso);
 };
 
 // Normaliza contribuintes
@@ -603,9 +605,9 @@ const filtered = computed(() => {
     const passTurno =
       !filtros.value.turno ||
       (it.turno && it.turno.toLowerCase() === filtros.value.turno.toLowerCase());
-    const di = filtros.value.inicio ? new Date(filtros.value.inicio) : null;
-    const df = filtros.value.fim ? new Date(filtros.value.fim) : null;
-    const dt = it.data_producao ? new Date(it.data_producao) : null;
+    const di = (filtros.value.inicio || "").slice(0, 10);
+    const df = (filtros.value.fim || "").slice(0, 10);
+    const dt = (it.data_producao || "").slice(0, 10);
     const passData = (!di || (dt && dt >= di)) && (!df || (dt && dt <= df));
     return passText && passTurno && passData;
   });
@@ -716,6 +718,20 @@ function validate() {
   return ok;
 }
 
+// --- NORMALIZAÇÃO DE DATAS (mantém YYYY-MM-DD puro) ---
+const DATE_KEYS = [
+  "data_producao",
+];
+
+function normalizeDateOnly(obj) {
+  DATE_KEYS.forEach((k) => {
+    const v = obj[k];
+    if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+      obj[k] = v; // não cria Date()
+    }
+  });
+}
+
 // Submit form
 async function submit() {
   if (!validate()) return;
@@ -740,10 +756,14 @@ async function submit() {
       payload.animais_contribuintes = arr.length ? `{${arr.join(",")}}` : null;
     }
     if (isEditing.value) {
+      normalizeDateOnly(payload);
       await http.put(`/leite/${currentId.value}`, { id: currentId.value, ...payload });
     } else {
-      await http.post("/leite", payload);
-    }
+  await http.post("/leite", (()=>{
+    normalizeDateOnly(payload);
+    return payload;
+  })());
+}
     await loadList();
     showModal.value = false;
   } catch (e) {

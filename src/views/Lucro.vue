@@ -508,8 +508,9 @@
 
 <script>
 import { ref, reactive, computed, watch, onMounted } from "vue";
-import { useRoute } from "vue-router"; //testar dps
+import { useRoute } from "vue-router"; 
 import http from "@/lib/http";
+import { formatDateBR } from "@/utils/date";
 
 export default {
   name: "LucroView",
@@ -617,7 +618,7 @@ export default {
   }
   confirmItem.value = item;
   showConfirm.value = true;
-};
+ };
 
     const loadList = async () => {
       try {
@@ -749,7 +750,22 @@ export default {
     setTimeout(() => (showToast.value = false), 3000);
     cancelConfirm();
   }
-};
+ };
+
+ const DATE_KEYS = [
+  "data_receita",
+  "data_vencimento",
+  "data_pagamento",
+];
+
+function normalizeDateOnly(obj) {
+  DATE_KEYS.forEach((k) => {
+    const v = obj[k];
+    if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+      obj[k] = v; // não cria Date(), evita "voltar um dia"
+    }
+  });
+}
 
     const save = async () => {
       saving.value = true;
@@ -789,6 +805,8 @@ export default {
             payload[k] = null;
           }
         }
+
+        normalizeDateOnly(payload);
 
         delete payload.valor_total;
 
@@ -836,9 +854,9 @@ export default {
     };
 
     const fmtData = (v) => {
-      if (!v) return "—";
-      return new Date(v).toLocaleDateString("pt-BR");
-    };
+  if (!v) return "—";
+  return formatDateBR(v); 
+}; // export default
 
     onMounted(() => {
       loadList();

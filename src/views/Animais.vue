@@ -653,6 +653,22 @@ function validate() {
   return ok;
 }
 
+// --- NORMALIZAÇÃO DE DATAS (não cria Date(), evita voltar 1 dia) ---
+const DATE_KEYS = [
+  "data_nascimento",
+  "ultima_vacinacao",
+  "proxima_vacinacao",
+];
+
+function normalizeDateOnly(obj) {
+  DATE_KEYS.forEach((k) => {
+    const v = obj[k];
+    if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+      obj[k] = v; // mantém YYYY-MM-DD puro
+    }
+  });
+}
+
 async function submit() {
   if (!validate()) return;
   saving.value = true;
@@ -695,6 +711,8 @@ async function submit() {
         return;
       }
 
+      normalizeDateOnly(diff);
+
       const resp = await http.put(`/vaca/${editingId.value}`, diff);
       if (resp.status === 200) {
         closeCreate();
@@ -716,6 +734,9 @@ async function submit() {
           delete payload[k];
         }
       });
+
+      normalizeDateOnly(payload);
+      
       const resp = await http.post(CREATE_ENDPOINT, payload);
       if (resp.status === 200 || resp.status === 201) {
         closeCreate();
