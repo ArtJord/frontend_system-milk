@@ -195,10 +195,18 @@ const editForm = ref({
   estado: "",
   cargo: "funcionario",
   ativo: 1,
+  senhaNova: "",
+  senhaConfirma: "",
 });
 
+const showPwdEdit = ref({ nova: false, confirma: false });
 const showSuccess = ref(false);
 const successText = ref("");
+
+const passwordMatchEdit = computed(
+  () =>
+    !editForm.value.senhaNova || editForm.value.senhaNova === editForm.value.senhaConfirma
+);
 
 const emailOkEdit = computed(() => /.+@.+\..+/.test(editForm.value.email));
 const cepOkEdit = computed(() => {
@@ -222,7 +230,9 @@ const formOkEdit = computed(
     emailOkEdit.value &&
     cepOkEdit.value &&
     ufOkEdit.value &&
-    telefoneOkEdit.value
+    telefoneOkEdit.value &&
+    (!editForm.value.senhaNova ||
+      (editForm.value.senhaNova.length >= 6 && passwordMatchEdit.value))
 );
 
 async function openEdit(u) {
@@ -243,7 +253,7 @@ async function openEdit(u) {
       cargo: (det.cargo || u.cargo || "funcionario").toLowerCase(),
       ativo: det.ativo === 1 || det.ativo === true ? 1 : 0,
     };
-    editForm.value = filled;
+    editForm.value = { ...filled, senhaNova: "", senhaConfirma: "" };
     showEdit.value = true;
   } catch (e) {
     editForm.value = {
@@ -256,6 +266,9 @@ async function openEdit(u) {
       estado: toUF(u.estado || ""),
       cargo: (u.cargo || "funcionario").toLowerCase(),
       ativo: u.ativo === 1 || u.ativo === true ? 1 : 0,
+
+      senhaNova: "",
+      senhaConfirma: "",
     };
     showEdit.value = true;
   }
@@ -326,16 +339,16 @@ async function confirmToggleAtivo() {
 }
 
 function onSuccessOk() {
-    // fecha o popup de sucesso
-    showSuccess.value = false;
+  // fecha o popup de sucesso
+  showSuccess.value = false;
 
-    // garante que o modal de confirmação fique fechado e limpo
-    showConfirmStatus.value = false;
-    statusSaving.value = false;
-    statusPassword.value = "";
-    statusError.value = "";
-    statusTargetUser.value = null;
-  }
+  // garante que o modal de confirmação fique fechado e limpo
+  showConfirmStatus.value = false;
+  statusSaving.value = false;
+  statusPassword.value = "";
+  statusError.value = "";
+  statusTargetUser.value = null;
+}
 
 async function submitEdit() {
   if (!formOkEdit.value || !editingUser.value) return;
@@ -408,6 +421,24 @@ async function submitEdit() {
       me.value.cargo = (payloadBasic.cargo || "").toLowerCase();
     }
 
+    if (editForm.value.senhaNova) {
+      try {
+        await http.patch(`/usuario/${id}/password`, {
+          newPassword: editForm.value.senhaNova,
+        });
+      } catch (err) {
+        savingEdit.value = false;
+        editMsg.value = {
+          type: "error",
+          text:
+            err?.response?.data?.message ||
+            err?.userMessage ||
+            "Falha ao definir a nova senha do usuário.",
+        };
+        return; // interrompe aqui para o usuário corrigir
+      }
+    }
+
     editMsg.value = { type: "success", text: "Usuário atualizado com sucesso." };
     showSuccess.value = true;
     successText.value = "Usuário atualizado com sucesso.";
@@ -420,6 +451,8 @@ async function submitEdit() {
     };
   } finally {
     savingEdit.value = false;
+    editForm.value.senhaNova = "";
+    editForm.value.senhaConfirma = "";
   }
 }
 
@@ -985,6 +1018,113 @@ onMounted(loadUsers);
                   {{ c }}
                 </button>
               </div>
+            </div>
+
+            <!-- ======== Definir nova senha (apenas gerente/admin está aqui) ======== -->
+            <div class="md:col-span-2">
+              <div class="my-4 h-px bg-slate-100"></div>
+              <h4 class="text-sm font-semibold text-slate-900">Definir nova senha</h4>
+              <p class="text-slate-500 text-xs mt-1">
+                Preencha para definir uma nova senha para este usuário (mín. 6
+                caracteres).
+              </p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-slate-700">Nova senha</label>
+              <div class="mt-2 relative">
+                <input
+                  :type="showPwdEdit.nova ? 'text' : 'password'"
+                  v-model="editForm.senhaNova"
+                  placeholder="Nova senha"
+                  class="w-full rounded-xl border border-slate-300 px-4 py-3 pr-11 text-base outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+                />
+                <button
+                  type="button"
+                  class="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-2 text-slate-500 hover:bg-slate-100"
+                  @click="showPwdEdit.nova = !showPwdEdit.nova"
+                  aria-label="Mostrar/ocultar senha"
+                >
+                  <svg
+                    v-if="!showPwdEdit.nova"
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                  >
+                    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                  <svg
+                    v-else
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                  >
+                    <path
+                      d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-7-11-7a20.28 20.28 0 0 1 5.06-5.94"
+                    />
+                    <path d="M1 1l22 22" />
+                  </svg>
+                </button>
+              </div>
+              <p
+                v-if="editForm.senhaNova && editForm.senhaNova.length < 6"
+                class="mt-1 text-xs text-red-600"
+              >
+                Mínimo de 6 caracteres.
+              </p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-slate-700"
+                >Confirmar senha</label
+              >
+              <div class="mt-2 relative">
+                <input
+                  :type="showPwdEdit.confirma ? 'text' : 'password'"
+                  v-model="editForm.senhaConfirma"
+                  placeholder="Confirmar senha"
+                  class="w-full rounded-xl border border-slate-300 px-4 py-3 pr-11 text-base outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+                />
+                <button
+                  type="button"
+                  class="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-2 text-slate-500 hover:bg-slate-100"
+                  @click="showPwdEdit.confirma = !showPwdEdit.confirma"
+                  aria-label="Mostrar/ocultar senha"
+                >
+                  <svg
+                    v-if="!showPwdEdit.confirma"
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                  >
+                    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                  <svg
+                    v-else
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                  >
+                    <path
+                      d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-7-11-7a20.28 20.28 0 0 1 5.06-5.94"
+                    />
+                    <path d="M1 1l22 22" />
+                  </svg>
+                </button>
+              </div>
+              <p v-if="!passwordMatchEdit" class="mt-1 text-xs text-red-600">
+                As senhas não coincidem.
+              </p>
             </div>
 
             <div class="md:col-span-2">
