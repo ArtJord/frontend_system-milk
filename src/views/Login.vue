@@ -80,6 +80,7 @@ async function handleLogin(e) {
       </div>
 
       <form class="px-8 pt-6 pb-8 space-y-4" @submit="handleLogin">
+      <!-- Email -->
         <div class="space-y-2">
           <label for="email" class="text-gray-700 block">Email</label>
           <input
@@ -87,10 +88,13 @@ async function handleLogin(e) {
             type="email"
             v-model="email"
             required
+            placeholder="Email"
+            autocomplete="username"
             class="w-full rounded-md border px-3 py-2 focus:ring-2 focus:ring-green-500/30"
           />
         </div>
 
+         <!-- Senha -->
         <div class="space-y-2">
           <label for="senha" class="text-gray-700 block">Senha</label>
           <div class="relative">
@@ -99,20 +103,23 @@ async function handleLogin(e) {
               id="senha"
               v-model="senha"
               required
+              placeholder="Senha"
+              autocomplete="current-password"
               class="w-full rounded-md border px-3 py-2 pr-10 focus:ring-2 focus:ring-green-500/30"
             />
+            <!-- único botão fixo à direita -->
             <button
               type="button"
               class="absolute inset-y-0 right-0 pr-3 flex items-center"
               @click="showPassword = !showPassword"
+              aria-label="Mostrar/ocultar senha"
             >
               <Eye v-if="!showPassword" class="h-5 w-5 text-gray-600" />
               <EyeOff v-else class="h-5 w-5 text-gray-600" />
             </button>
           </div>
         </div>
-
-        <button
+            <button
           type="submit"
           :disabled="carregando"
           class="w-full bg-green-600 hover:bg-green-700 text-white rounded-md py-2 font-medium disabled:opacity-60"
@@ -128,12 +135,28 @@ async function handleLogin(e) {
         <div class="mt-2 text-center">
           <p class="text-sm text-gray-600">
             Não tem uma conta?
-            <router-link to="/register" class="text-green-600 hover:underline"
-              >Criar conta</router-link
-            >
+            <router-link to="/register" class="text-green-600 hover:underline">
+              Criar conta
+            </router-link>
           </p>
         </div>
       </form>
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Esconde o botão nativo de revelar senha (Edge/IE/Chromium) */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+input[type="password"]::-webkit-textfield-decoration-container,
+input[type="password"]::-webkit-credentials-auto-fill-button,
+input[type="password"]::-webkit-clear-button,
+input[type="password"]::-webkit-reveal {
+  display: none;
+  visibility: hidden;
+  pointer-events: none;
+}
+</style>
