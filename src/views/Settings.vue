@@ -229,30 +229,36 @@ async function saveChanges() {
   message.value = { type: "", text: "" };
 
   try {
-    
-    if (dirtyBasic.value) {
-      const payloadBasic = {
-        fullName: form.value.fullName, 
-        email:    form.value.email,
-      };
+    // 1) Senha (se preenchida)
+    const wantsPasswordChange =
+      !!form.value.currentPassword ||
+      !!form.value.newPassword ||
+      !!form.value.confirmPassword;
 
-      
-      if (form.value.currentPassword || form.value.newPassword || form.value.confirmPassword) {
-        if (!passwordSectionValid.value) {
-          throw new Error("Preencha corretamente os campos de senha.");
-        }
-        payloadBasic.currentPassword = form.value.currentPassword;
-        payloadBasic.newPassword     = form.value.newPassword;
+    if (wantsPasswordChange) {
+      if (!passwordSectionValid.value) {
+        throw new Error("Preencha corretamente os campos de senha.");
       }
-
-      await http.patch(`/usuario/${user.value.id}`, payloadBasic);
-
-      
-      user.value.fullName = payloadBasic.fullName;
-      user.value.email    = payloadBasic.email;
+      if ((form.value.newPassword || "").length < 6) {
+        throw new Error("A nova senha deve ter no mínimo 6 caracteres.");
+      }
+      await http.patch("/me/password", {
+        currentPassword: form.value.currentPassword,
+        newPassword: form.value.newPassword,
+      });
     }
 
-  
+    // 2) Nome/Email
+    if (dirtyBasic.value) {
+      await http.patch("/me", {
+        fullName: form.value.fullName,
+        email: form.value.email,
+      });
+      user.value.fullName = form.value.fullName;
+      user.value.email    = form.value.email;
+    }
+
+    // 3) Perfil (telefone/endereço/...)
     if (dirtyPerfil.value) {
       const payloadPerfil = {
         telefone: maskPhone(form.value.telefone).trim() || null,
@@ -261,20 +267,15 @@ async function saveChanges() {
         estado:   toUF(form.value.estado)     || null,
         cep:      formatCEP(form.value.cep)   || null,
       };
-
       await http.patch(`/usuario/${user.value.id}/perfil`, payloadPerfil);
-     
       user.value = { ...user.value, ...payloadPerfil };
     }
 
     Object.assign(form.value, user.value);
-
-    // limpa campos de senha
     form.value.currentPassword = "";
     form.value.newPassword = "";
     form.value.confirmPassword = "";
 
-    // grava cache por usuário
     writeProfileCache(user.value.id, {
       fullName: user.value.fullName,
       email:    user.value.email,
@@ -287,7 +288,11 @@ async function saveChanges() {
 
     showFeedback("Alterações salvas com sucesso.", "success", "Perfil atualizado");
   } catch (e) {
-    const txt = e?.userMessage || e?.response?.data?.message || e?.message || "Não foi possível salvar. Tente novamente.";
+    const txt =
+      e?.userMessage ||
+      e?.response?.data?.message ||
+      e?.message ||
+      "Não foi possível salvar. Tente novamente.";
     showFeedback(txt, "error", "Falha ao salvar");
   } finally {
     loading.value = false;
