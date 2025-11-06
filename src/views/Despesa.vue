@@ -471,6 +471,15 @@
         </div>
       </div>
     </div>
+    <FeedbackModal
+      :open="showFeedback"
+      :type="feedback.type"
+      :title="feedback.title"
+      :text="feedback.text"
+      :okText="feedback.okText"
+      @ok="closeFeedback"
+      @close="closeFeedback"
+    />
   </div>
 </template>
 
@@ -478,9 +487,11 @@
 import { ref, reactive, computed, watch, onMounted } from "vue";
 import http from "@/lib/http";
 import { formatDateBR } from "@/utils/date";
+import FeedbackModal from "@/components/ui/FeedbackModal.vue";
 
 export default {
   name: "DespesaView",
+  components: { FeedbackModal },
   setup() {
     // UI state
     const saving = ref(false);
@@ -498,6 +509,26 @@ export default {
 
     // lista
     const list = ref([]);
+
+    // --- FeedbackModal ---
+    const showFeedback = ref(false);
+    const feedback = ref({
+      type: "success", // success | error | info
+      title: "Despesa salva!",
+      text: "A despesa foi registrada com sucesso.",
+      okText: "OK",
+    });
+    function openFeedback(
+      msg,
+      type = "success",
+      title = type === "success" ? "Tudo certo!" : "Ops..."
+    ) {
+      feedback.value = { type, title, text: msg, okText: "OK" };
+      showFeedback.value = true;
+    }
+    function closeFeedback() {
+      showFeedback.value = false;
+    }
 
     function getUserRole() {
       const byStorage =
@@ -676,20 +707,16 @@ export default {
       }
     };
 
-    const DATE_KEYS = [
-  "data_despesa",
-  "data_vencimento",
-  "data_pagamento",
-];
+    const DATE_KEYS = ["data_despesa", "data_vencimento", "data_pagamento"];
 
-function normalizeDateOnly(obj) {
-  DATE_KEYS.forEach((k) => {
-    const v = obj[k];
-    if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
-      obj[k] = v; // mantém como veio do <input type="date">
+    function normalizeDateOnly(obj) {
+      DATE_KEYS.forEach((k) => {
+        const v = obj[k];
+        if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+          obj[k] = v; // mantém como veio do <input type="date">
+        }
+      });
     }
-  });
-}
 
     // salvar
     const save = async () => {
@@ -735,11 +762,13 @@ function normalizeDateOnly(obj) {
           const created = (res?.data?.despesa || res?.data) ?? payload;
           list.value.push(created);
         }
-
-        toastMessage.value = "Despesa salva com sucesso!";
-        toastType.value = "success";
-        showToast.value = true;
         close();
+
+        if (isEditing.value) {
+          openFeedback("Alterações salvas com sucesso!", "success", "Alterações salvas!");
+        } else {
+          openFeedback("Despesa cadastrada com sucesso!", "success", "Tudo certo!");
+        }
       } catch (err) {
         const details = err.fieldDetails || err?.response?.data?.details;
         if (details) {
@@ -747,12 +776,14 @@ function normalizeDateOnly(obj) {
           Object.assign(errors, details);
         }
 
-        toastMessage.value =
-          (err && (err.userMessage || err.message)) ||
+        openFeedback(
           err?.response?.data?.message ||
-          "Não foi possível concluir a operação.";
-        toastType.value = "error";
-        showToast.value = true;
+            err?.userMessage ||
+            err?.message ||
+            "Não foi possível concluir a operação.",
+          "error",
+          "Ops..."
+        );
       } finally {
         saving.value = false;
       }
@@ -807,6 +838,11 @@ function normalizeDateOnly(obj) {
       canDelete,
 
       filtered,
+
+      showFeedback,
+      feedback,
+      openFeedback,
+      closeFeedback,
     };
   },
 };

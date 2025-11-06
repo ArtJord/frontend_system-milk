@@ -78,7 +78,7 @@
         class="relative rounded-xl border border-gray-100 bg-white p-5 shadow-sm"
       >
        <!-- Ações -->
-  <div class="absolute top-3 right-3 flex items-center gap-2">
+   <div class="absolute top-3 right-3 flex items-center gap-2">
     <!-- Editar -->
     <button
       @click="openEdit(a)"
@@ -101,7 +101,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" d="M6 7h12M9 7V4h6v3m2 0v13a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7z"/>
       </svg>
     </button>
-  </div>
+   </div>
         <div class="flex items-start justify-between mb-2">
           <div class="text-xs text-gray-500">Nº {{ a.numero_animal || "—" }}</div>
           <Milk class="h-4 w-4 text-green-600" />
@@ -434,6 +434,15 @@
         </div>
       </div>
     </div>
+    <FeedbackModal
+  :open="showFeedback"
+  :type="feedback.type"
+  :title="feedback.title"
+  :text="feedback.text"
+  :okText="feedback.okText"
+  @ok="closeFeedback"
+  @close="closeFeedback"
+/>
   </div>
 </template>
 
@@ -450,6 +459,15 @@ const REQUIRED_ON_UPDATE = ["numero_animal"];
 // Endpoints
 const LIST_ENDPOINT = "/vacas"; // GET (listar)
 const CREATE_ENDPOINT = "/vaca"; // POST (criar)
+
+// Estado do FeedbackModal
+const showFeedback = ref(false);
+const feedback = ref({
+  type: "success",     // success | error | info
+  title: "Cadastro realizado!",
+  text: "O animal foi salvo com sucesso.",
+  okText: "OK",
+});
 
 // Estado base
 const loading = ref(false);
@@ -688,8 +706,7 @@ async function submit() {
             vNow === null ||
             (typeof vNow === "string" && vNow.trim() === "") ||
             (typeof vNow === "number" && Number.isNaN(vNow))
-          )
-            return;
+          ) return;
           diff[k] = vNow;
         }
       });
@@ -718,9 +735,14 @@ async function submit() {
       if (resp.status === 200) {
         closeCreate();
         await load();
+
+        
+        openFeedback("As alterações do animal foram salvas com sucesso!", "success", "Alterações salvas!");
       } else {
-        alert("Não foi possível salvar as alterações.");
+        
+        openFeedback("Não foi possível salvar as alterações.", "error", "Ops...");
       }
+
     } else {
       // criação
       const payload = { ...form.value };
@@ -742,19 +764,36 @@ async function submit() {
       if (resp.status === 200 || resp.status === 201) {
         closeCreate();
         await load();
+
+        
+        openFeedback("Animal cadastrado com sucesso!", "success", "Tudo certo!");
       } else {
-        alert("Não foi possível cadastrar.");
+       
+        openFeedback("Não foi possível cadastrar o animal.", "error", "Ops...");
       }
     }
   } catch (e) {
-    alert(
+    
+    openFeedback(
       e?.response?.data?.message ??
-        (isEditing.value ? "Erro ao editar animal." : "Erro ao cadastrar animal.")
+        (isEditing.value ? "Erro ao editar animal." : "Erro ao cadastrar animal."),
+      "error",
+      "Ops..."
     );
   } finally {
     saving.value = false;
   }
 }
+
+function openFeedback(msg, type = "success", title = type === "success" ? "Tudo certo!" : "Ops...") {
+  feedback.value = { type, title, text: msg, okText: "OK" };
+  showFeedback.value = true;
+}
+
+function closeFeedback() {
+  showFeedback.value = false;
+}
+
 function getUserRole() {
   const raw =
     localStorage.getItem("user_cargo") ||

@@ -465,6 +465,15 @@
         </div>
       </div>
     </div>
+    <FeedbackModal
+      :open="showFeedback"
+      :type="feedback.type"
+      :title="feedback.title"
+      :text="feedback.text"
+      :okText="feedback.okText"
+      @ok="closeFeedback"
+      @close="closeFeedback"
+    />
   </div>
 </template>
 
@@ -473,6 +482,7 @@ import { ref, computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import http from "@/lib/http";
 import { formatDateBR } from "@/utils/date";
+import FeedbackModal from "@/components/ui/FeedbackModal.vue";
 
 // Recupera cargo do usuário
 function getUserRole() {
@@ -558,6 +568,25 @@ const errors = ref({});
 // Modal de confirmação
 const showConfirm = ref(false);
 const confirmItem = ref(null);
+
+const showFeedback = ref(false);
+const feedback = ref({
+  type: "success", // success | error | info
+  title: "Registro salvo!",
+  text: "O registro de leite foi cadastrado com sucesso.",
+  okText: "OK",
+});
+function openFeedback(
+  msg,
+  type = "success",
+  title = type === "success" ? "Tudo certo!" : "Ops..."
+) {
+  feedback.value = { type, title, text: msg, okText: "OK" };
+  showFeedback.value = true;
+}
+function closeFeedback() {
+  showFeedback.value = false;
+}
 
 // Helpers
 const fmtNumero = (n) => {
@@ -719,9 +748,7 @@ function validate() {
 }
 
 // --- NORMALIZAÇÃO DE DATAS (mantém YYYY-MM-DD puro) ---
-const DATE_KEYS = [
-  "data_producao",
-];
+const DATE_KEYS = ["data_producao"];
 
 function normalizeDateOnly(obj) {
   DATE_KEYS.forEach((k) => {
@@ -749,33 +776,46 @@ async function submit() {
       if (payload[k] === "") payload[k] = null;
     });
     if (payload.temperatura === "") payload.temperatura = null;
+
     if (Array.isArray(payload.animais_contribuintes)) {
       const arr = payload.animais_contribuintes
         .map((n) => Number(n))
         .filter((n) => !Number.isNaN(n));
       payload.animais_contribuintes = arr.length ? `{${arr.join(",")}}` : null;
     }
+
     if (isEditing.value) {
       normalizeDateOnly(payload);
       await http.put(`/leite/${currentId.value}`, { id: currentId.value, ...payload });
     } else {
-  await http.post("/leite", (()=>{
-    normalizeDateOnly(payload);
-    return payload;
-  })());
-}
-    await loadList();
+      await http.post(
+        "/leite",
+        (() => {
+          normalizeDateOnly(payload);
+          return payload;
+        })()
+      );
+    }
+
+   await loadList();
     showModal.value = false;
+
+    
+    if (isEditing.value) {
+      openFeedback("Alterações salvas com sucesso!", "success", "Alterações salvas!");
+    } else {
+      openFeedback("Registro de leite cadastrado com sucesso!", "success", "Tudo certo!");
+    }
+
   } catch (e) {
-    console.error(
-      "Falha ao salvar:",
-      e?.response?.status,
-      e?.response?.data || e?.message
-    );
-    alert(
+    
+    openFeedback(
       e?.response?.data?.message ||
-        (isEditing.value ? "Erro ao salvar edição." : "Erro ao cadastrar.")
+        (isEditing.value ? "Erro ao salvar edição." : "Erro ao cadastrar."),
+      "error",
+      "Ops..."
     );
+    
   } finally {
     saving.value = false;
   }

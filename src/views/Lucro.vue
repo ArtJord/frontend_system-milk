@@ -503,6 +503,16 @@
         </div>
       </div>
     </div>
+    <FeedbackModal
+  :open="showFeedback"
+  :type="feedback.type"
+  :title="feedback.title"
+  :text="feedback.text"
+  :okText="feedback.okText"
+  @ok="closeFeedback"
+  @close="closeFeedback"
+/>
+
   </div>
 </template>
 
@@ -511,9 +521,11 @@ import { ref, reactive, computed, watch, onMounted } from "vue";
 import { useRoute } from "vue-router"; 
 import http from "@/lib/http";
 import { formatDateBR } from "@/utils/date";
+import FeedbackModal from "@/components/ui/FeedbackModal.vue";
 
 export default {
   name: "LucroView",
+  components: { FeedbackModal },
   setup() {
     const saving = ref(false);
     const q = ref("");
@@ -548,6 +560,22 @@ export default {
       data_pagamento: "",
       observacoes: "",
     });
+
+    // --- FeedbackModal state ---
+    const showFeedback = ref(false);
+    const feedback = ref({
+      type: "success",            // success | error | info
+      title: "Registro salvo!",
+      text: "O registro de lucro foi salvo com sucesso.",
+      okText: "OK",
+    });
+    function openFeedback(msg, type = "success", title = type === "success" ? "Tudo certo!" : "Ops...") {
+      feedback.value = { type, title, text: msg, okText: "OK" };
+      showFeedback.value = true;
+    }
+    function closeFeedback() {
+      showFeedback.value = false;
+    }
 
     const manualValorTotal = ref(false);
 
@@ -821,29 +849,35 @@ function normalizeDateOnly(obj) {
           const created = (res?.data?.lucro || res?.data) ?? payload;
           list.value.push(created);
         }
-
-        toastMessage.value = "Registro salvo com sucesso!";
-        toastType.value = "success";
-        showToast.value = true;
         close();
-      } catch (err) {
-        const details = err?.response?.data?.details;
-        if (details && typeof details === "object") {
-          clearErrors();
-          errors.value = details;
-        }
 
-        toastMessage.value =
-          err?.response?.data?.message ||
-          err?.userMessage ||
-          err?.message ||
-          "Não foi possível concluir a operação.";
-        toastType.value = "error";
-        showToast.value = true;
-      } finally {
-        saving.value = false;
-      }
-    };
+      
+
+        if (isEditing.value) {
+      openFeedback("Alterações salvas com sucesso!", "success", "Alterações salvas!");
+    } else {
+      openFeedback("Registro de lucro cadastrado com sucesso!", "success", "Tudo certo!");
+    }
+
+  } catch (err) {
+    const details = err?.response?.data?.details;
+    if (details && typeof details === "object") {
+      clearErrors();
+      errors.value = details;
+    }
+
+    openFeedback(
+      err?.response?.data?.message ||
+        err?.userMessage ||
+        err?.message ||
+        "Não foi possível concluir a operação.",
+      "error",
+      "Ops..."
+    );
+  } finally {
+    saving.value = false;
+  }
+};
 
     const fmtNumero = (v) => {
       if (!v) return "0,00";
@@ -891,6 +925,10 @@ function normalizeDateOnly(obj) {
       saving,
       CATEGORIAS,
       loadList,
+      showFeedback,
+      feedback,
+      openFeedback,
+      closeFeedback,
     };
   },
 };
