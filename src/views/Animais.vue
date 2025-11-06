@@ -442,6 +442,7 @@ import { ref, computed, onMounted } from "vue";
 import { Plus, X, Milk, Pencil } from "lucide-vue-next";
 import http from "@/lib/http";
 import { formatDateBR } from "@/utils/date";
+import FeedbackModal from "@/components/ui/FeedbackModal.vue";
 
 //teste
 const REQUIRED_ON_UPDATE = ["numero_animal"];
