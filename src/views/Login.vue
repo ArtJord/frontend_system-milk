@@ -74,7 +74,7 @@ async function handleLogin(e) {
           </div>
         </div>
         <div>
-          <h2 class="text-2xl font-bold text-gray-900">Sistema Leiteria</h2>
+          <h2 class="text-2xl font-bold text-gray-900">Leiteria Milk Bom</h2>
           <p class="text-gray-600">Faça login para acessar o sistema</p>
         </div>
       </div>

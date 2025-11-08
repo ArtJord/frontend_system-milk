@@ -6,7 +6,7 @@
         <span class="inline-flex items-center gap-2 text-gray-900 font-semibold">
           <!-- Ícone real (Milk) no lugar do círculo -->
           <Milk class="h-6 w-6 text-green-600" />
-          System Milk
+          Leiteria Milk Bom
         </span>
       </div>
 
