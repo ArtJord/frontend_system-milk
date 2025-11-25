@@ -1,4 +1,4 @@
-# 🐄 System Milk — Frontend (Vue 3 + Vite)
+# 🐄 Leiteria Milk Bom — Frontend (Vue 3 + Vite)
 
 [![Vue.js](https://img.shields.io/badge/Vue-3.4-brightgreen)]()
 [![Vite](https://img.shields.io/badge/Vite-5-purple)]()
