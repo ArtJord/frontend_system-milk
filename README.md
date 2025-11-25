@@ -1,35 +1,130 @@
-# frontend
+# 🐄 System Milk — Frontend (Vue 3 + Vite)
 
-This template should help get you started developing with Vue 3 in Vite.
+[![Vue.js](https://img.shields.io/badge/Vue-3.4-brightgreen)]()
+[![Vite](https://img.shields.io/badge/Vite-5-purple)]()
+[![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3-blue)]()
+[![Status](https://img.shields.io/badge/Status-Ativo-brightgreen)]()
 
-## Recommended IDE Setup
+Frontend oficial do **System Milk**, desenvolvido com **Vue 3 (Composition API)**, **Vite**, **TailwindCSS** e integração completa com o backend REST em PHP.
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+Este repositório contém **apenas o frontend**.  
+➡️ O backend está disponível em: **https://github.com/ArtJord/system-milk-backend**
 
-## Customize configuration
+---
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+# 🚀 Visão Geral
 
-## Project Setup
+O frontend oferece uma UI moderna, responsiva e orientada à produtividade para operações da leiteria:
 
-```sh
+- 🐄 **Cadastro e gestão de animais**
+- 🥛 **Registro de produção de leite**
+- 💰 **Controle financeiro**
+  - Lucros  
+  - Despesas
+- 📊 **Painel de relatórios**
+- 🔐 **Login e autenticação**
+- ✍️ **Formulários completos, com validação**
+- 🔎 **Filtros por período, categoria e pesquisa textual**
+
+Construído com foco em performance e organização modular.
+
+---
+
+# ⚙️ Tecnologias Utilizadas
+
+| Camada       | Tecnologia |
+|--------------|------------|
+| Framework    | Vue 3 (Composition API) |
+| Builder      | Vite |
+| Estilos      | TailwindCSS |
+| Componentes  | HeroIcons / custom |
+| Estado       | Pinia |
+| HTTP Client  | Axios |
+| Utilidades   | date utils, toast handlers |
+
+---
+
+# 🛠️ Instalação e Setup
+
+## 1️⃣ Clonar o repositório
+
+```bash
+git clone https://github.com/SEU_USUARIO/system-milk-frontend.git
+cd system-milk-frontend
+```
+## 2️⃣ Instalar dependências
+```
 npm install
 ```
+ou
+```
+pnpm install
+```
+## 3️⃣ Configurar ambiente (.env.development)
+Arquivo já incluído no projeto:
+```
+VITE_API_URL=http://localhost:8001
+```
 
-### Compile and Hot-Reload for Development
+📌 Ajuste conforme a URL do backend.
 
-```sh
+## 4️⃣ Rodar em modo desenvolvimento
+```
 npm run dev
 ```
-
-### Compile and Minify for Production
-
-```sh
-npm run build
+Aplicação rodando em:
+```
+http://localhost:5173
 ```
 
-### Run Unit Tests with [Vitest](https://vitest.dev/)
+## 🌐 Telas Principais
 
-```sh
-npm run test:unit
+🐄 **Animais — cadastro, edição e listagem**
+🥛 **Produção de Leite — formulários completos**
+💰 **Lucros — receitas e valores automáticos**
+📉 **Despesas — classificação por prioridade**
+📊 **Dashboard — visão geral (roadmap)**
+🔐 **Autenticação — login e registro**
+
+## 🔗 Integração com Backend
+A comunicação é feita via Axios, através do arquivo:
 ```
+src/lib/http.js
+```
+Exemplo:
+```
+import axios from 'axios';
+
+export const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL,
+});
+```
+
+## 🤝 Contribuição
+Contribuições são bem-vindas!
+Antes de enviar um PR:
+
+1. Crie uma branch:
+```
+git checkout -b feature/minha-feature
+```
+2. Faça suas alterações
+3. Rode os testes (quando disponíveis)
+4. Abra um Pull Request bem descrito
+
+📣 Observação
+
+Este projeto integra-se totalmente ao backend System Milk:
+➡️ https://github.com/ArtJord/system-milk-backend
+
+
+
+
+
+
+
+
+
+
+
+
