@@ -8,7 +8,7 @@
 Frontend oficial do **System Milk**, desenvolvido com **Vue 3 (Composition API)**, **Vite**, **TailwindCSS** e integração completa com o backend REST em PHP.
 
 Este repositório contém **apenas o frontend**.  
-➡️ O backend está disponível em: **https://github.com/ArtJord/system-milk-backend**
+➡️ O backend está disponível em: **https://github.com/ArtJord/system-milk**
 
 ---
 
@@ -115,7 +115,7 @@ git checkout -b feature/minha-feature
 📣 Observação
 
 Este projeto integra-se totalmente ao backend System Milk:
-➡️ https://github.com/ArtJord/system-milk-backend
+➡️ **https://github.com/ArtJord/system-milk**
 
 
 
